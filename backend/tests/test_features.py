@@ -229,3 +229,18 @@ def test_mpesa_stk_flow_with_callback(client_factory, monkeypatch):
         cancel = {"Body": {"stkCallback": {"CheckoutRequestID": "ws_CO_TEST_2", "ResultCode": 1032, "ResultDesc": "Request cancelled by user"}}}
         client_factory().post(hook, json=cancel)
         assert d.get(f"/api/pay/attempts/{att}").json()["status"] == "Cancelled"
+
+
+def test_staff_and_applicant_entrances_are_separate(client_factory):
+    c = client_factory()
+    staff_login = {"identifier": "registrar@sports.example.ke", "password": PW}
+    # staff credentials on the public (applicant) sign-in are refused with a pointer to the staff portal
+    r = c.post("/api/auth/login", json={**staff_login, "audience": "member"})
+    assert r.status_code == 403 and "staff sign-in" in r.json()["detail"]
+    assert c.get("/api/bootstrap?facilities=0").json()["me"] is None  # no session was created
+    assert c.post("/api/auth/login", json={**staff_login, "audience": "staff"}).status_code == 200
+    # an applicant at the staff portal gets the same generic failure as a wrong password
+    d = client_factory()
+    r = d.post("/api/auth/login", json={"identifier": "player@example.co.ke", "password": PW, "audience": "staff"})
+    assert r.status_code == 401 and r.json()["detail"] == "Incorrect email/phone or password."
+    assert d.post("/api/auth/login", json={"identifier": "player@example.co.ke", "password": PW, "audience": "member"}).status_code == 200

@@ -10,17 +10,10 @@ import { Field, inputCls } from "./ui/Field";
 import { ButtonSpinner } from "./ui/Spinner";
 
 // Seeded demo accounts (prototype data only; real deployments set their own passwords).
-const DEMO = [
+// Seeded demo accounts (demo deployments only).
+const DEMO_APPLICANTS = [
   ["Club manager (verified club)", "club.manager@example.co.ke"],
   ["Player (awaiting verification)", "player@example.co.ke"],
-  ["Super administrator (control centre)", "super.admin@sports.example.ke"],
-  ["Sports Registrar", "registrar@sports.example.ke"],
-  ["County officer, Nairobi", "nairobi.sports@sports.example.ke"],
-  ["Federation admin, Athletics", "membership@athletics.example.ke"],
-  ["Facilities officer", "facilities@sports.example.ke"],
-  ["Finance officer", "finance@sports.example.ke"],
-  ["Integrity officer", "integrity@sports.example.ke"],
-  ["System administrator", "ict@sports.example.ke"],
 ];
 
 export function LoginView() {
@@ -40,7 +33,7 @@ export function LoginView() {
     setBusy(true);
     setErr("");
     try {
-      const u = await login(id.trim(), pw, code);
+      const u = await login(id.trim(), pw, code, "member");
       router.push(u.mustChangePassword || u.needs2fa ? "/security" : u.staff ? "/console" : "/account");
     } catch (x) {
       if (x instanceof ApiError && x.status === 428) {
@@ -55,7 +48,7 @@ export function LoginView() {
     <div className="mx-auto grid max-w-[1100px] gap-6 px-5 pb-24 lg:grid-cols-[1fr_1fr]">
       <section className="-mt-8 self-start rounded-2xl border border-line bg-white p-6 shadow-[0_40px_80px_-50px_rgba(6,45,87,0.5)] sm:p-8">
         <h2 className="text-2xl font-extrabold text-forest-900">Sign in</h2>
-        <p className="mt-1 text-sm text-ink-3">Players, clubs, federation staff and Ministry offices use the same sign-in.</p>
+        <p className="mt-1 text-sm text-ink-3">For players and clubs. Ministry and federation staff use the <Link href="/staff" className="font-bold text-forest-700 underline">staff sign-in</Link>.</p>
         {me ? (
           <div className="mt-6 rounded-xl bg-forest-100 p-4 text-sm">
             Signed in as <b>{me.name}</b>.{" "}
@@ -93,13 +86,13 @@ export function LoginView() {
 
       {state.config.demo && (
       <section className="rounded-2xl border border-line bg-white p-6 sm:p-8 lg:-mt-8">
-        <h2 className="text-lg font-extrabold text-forest-900">Demo accounts</h2>
+        <h2 className="text-lg font-extrabold text-forest-900">Demo applicant accounts</h2>
         <p className="mt-3 flex gap-2.5 rounded-lg border-l-4 border-gold bg-gold-soft p-3 text-[12.5px] text-ink-2">
           <ShieldAlert size={16} className="mt-0.5 shrink-0" />
           Seeded for review only. Password for all: <b className="font-mono">Sports@2026!</b>. A live deployment sets its own and removes these.
         </p>
         <ul className="mt-4 divide-y divide-line">
-          {DEMO.map(([label, email]) => (
+          {DEMO_APPLICANTS.map(([label, email]) => (
             <li key={email}>
               <button
                 type="button"

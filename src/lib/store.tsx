@@ -111,7 +111,7 @@ interface Store {
   can: (p: Permission) => boolean;
   federationName: (sportId: string) => string;
   refresh: () => Promise<void>;
-  login: (identifier: string, password: string, code?: string) => Promise<Me>;
+  login: (identifier: string, password: string, code?: string, audience?: "member" | "staff") => Promise<Me>;
   markNotificationsRead: () => Promise<void>;
   startMpesa: (ids: string[], phone: string) => Promise<string>;
   attemptStatus: (id: string) => Promise<{ status: string; message: string; receipt: string | null }>;
@@ -277,8 +277,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       refresh,
       notify,
 
-      login: async (identifier, password, code) => {
-        const r = await api<{ me: Me }>("/auth/login", "POST", { identifier, password, code: code ?? "" });
+      login: async (identifier, password, code, audience) => {
+        const r = await api<{ me: Me }>("/auth/login", "POST", { identifier, password, code: code ?? "", audience });
         await refresh();
         return r.me;
       },

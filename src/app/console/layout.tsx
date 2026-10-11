@@ -34,12 +34,12 @@ const NAV: { href: string; label: string; icon: React.ReactNode; perm?: Permissi
 ];
 
 export default function ConsoleLayout({ children }: { children: React.ReactNode }) {
-  const { user, can, logout } = useStore();
+  const { user, can, logout, state } = useStore();
   const router = useRouter();
   const path = usePathname();
 
   useEffect(() => {
-    if (!user) router.replace("/login");
+    if (!user) router.replace("/staff");
     else if (user.mustChangePassword || user.needs2fa) router.replace("/security");
   }, [user, router]);
 
@@ -49,8 +49,8 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
 
   return (
     <div className="min-h-screen bg-bone lg:grid lg:grid-cols-[264px_1fr]">
-      <aside className="border-b border-line bg-forest-950 text-white lg:sticky lg:top-0 lg:h-screen lg:border-b-0">
-        <div className="flex flex-col gap-6 p-5 lg:h-full">
+      <aside className="border-b border-line bg-forest-950 text-white lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-b-0">
+        <div className="flex flex-col gap-5 p-4 lg:min-h-full">
           <Link href="/" aria-label="Public site"><Logo light /></Link>
           <nav className="flex gap-1 overflow-x-auto lg:flex-col lg:overflow-visible" aria-label="Console">
             {items.map((n) => {
@@ -59,7 +59,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
                 <Link
                   key={n.href}
                   href={n.href}
-                  className={`flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition ${
+                  className={`flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2 text-sm font-medium transition ${
                     active ? "bg-white text-forest-900" : "text-white/70 hover:bg-white/10 hover:text-white"
                   }`}
                 >
@@ -68,14 +68,14 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
               );
             })}
           </nav>
-          <div className="mt-auto hidden rounded-2xl bg-white/8 p-4 lg:block">
+          <div className="mt-auto hidden shrink-0 rounded-2xl bg-white/8 p-4 lg:block">
             <p className="eyebrow text-[10px] text-gold">{role.label}</p>
             <p className="mt-1.5 font-semibold">{user.name}</p>
             <p className="text-xs text-white/55">{user.title}</p>
             <div className="mt-4 flex gap-2">
               <Link href="/" className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white/10 py-2 text-xs font-semibold hover:bg-white/20"><Home size={13} /> Site</Link>
               <button
-                onClick={() => { logout(); router.push("/login"); }}
+                onClick={() => { logout(); router.push("/staff"); }}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white/10 py-2 text-xs font-semibold hover:bg-white/20"
               >
                 <LogOut size={13} /> Sign out
@@ -88,11 +88,13 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
       <div className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-paper px-6 py-3 lg:hidden">
           <span className="flex items-center gap-2 text-sm font-semibold"><Building2 size={16} /> {user.name} · {role.label}</span>
-          <button onClick={() => { logout(); router.push("/login"); }} className="text-xs font-semibold text-kenya-red">Sign out</button>
+          <button onClick={() => { logout(); router.push("/staff"); }} className="text-xs font-semibold text-kenya-red">Sign out</button>
         </div>
-        <div className="bg-gold-soft/70 px-6 py-2 text-center text-xs text-ink-2">
-          Prototype console. Records marked demo are illustrative; everything you change is saved only in this browser.
-        </div>
+        {state.config.demo && (
+          <div className="bg-gold-soft/70 px-6 py-2 text-center text-xs text-ink-2">
+            Demo environment: the sample people, clubs and payments here are illustrative.
+          </div>
+        )}
         <div className="mx-auto max-w-[1280px] px-6 py-8">{children}</div>
       </div>
     </div>

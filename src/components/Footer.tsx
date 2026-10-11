@@ -63,7 +63,7 @@ export function Footer() {
             <li><Link href="/privacy" className="transition hover:text-white">Privacy notice</Link></li>
             <li><Link href="/terms" className="transition hover:text-white">Terms of use</Link></li>
             <li><Link href="/credits" className="transition hover:text-white">Photo & data credits</Link></li>
-            <li><Link href="/login" className="transition hover:text-white">Staff sign in</Link></li>
+            <li><Link href="/staff" className="transition hover:text-white">Staff sign in</Link></li>
           </ul>
         </div>
 

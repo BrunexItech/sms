@@ -236,6 +236,7 @@ class LoginIn(In):
     identifier: str
     password: str
     code: str = ""
+    audience: str | None = None  # "member" (public sign-in) or "staff" (staff portal)
 
 
 class PayIn(In):
@@ -408,6 +409,10 @@ def login(d: LoginIn, response: Response, request: Request, db: Session = Depend
         norm = re.sub(r"\s", "", d.identifier)
         u = db.scalars(select(User).where(User.phone == norm)).first()
     if not u or not u.active or not S.verify_password(d.password, u.password_hash):
+        err(401, "Incorrect email/phone or password.")
+    if d.audience == "member" and u.role != "member":
+        err(403, "This is a staff account. Please use the staff sign-in page.")
+    if d.audience == "staff" and u.role == "member":
         err(401, "Incorrect email/phone or password.")
     if u.totp_enabled:
         if not d.code.strip():

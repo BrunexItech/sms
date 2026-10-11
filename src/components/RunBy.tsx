@@ -56,7 +56,7 @@ export function RunBy() {
             <p className="font-display text-xl">
               Staff?
               <br />
-              <Link href="/login" className="text-gold underline underline-offset-4">Open the console</Link>
+              <Link href="/staff" className="text-gold underline underline-offset-4">Open the console</Link>
             </p>
           </div>
         </div>
