@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Lock, MapPin, Search, ShieldCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Search, ShieldCheck } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatPlace } from "@/lib/admin";
 import { SPORT_BY_ID, SPORTS } from "@/data/sports";
@@ -36,10 +36,13 @@ interface Row {
   affiliation: string;
 }
 
-export function DirectoryView({ initialTab = "players" }: { initialTab?: DirectoryTab }) {
-  const { state, admin, me, member, can } = useStore();
+/** "public" shows only what anyone may see (clubs, facilities); "staff" is the full register inside the console. */
+const PUBLIC_TABS: DirectoryTab[] = ["clubs", "facilities"];
+
+export function DirectoryView({ initialTab = "players", scope = "staff" }: { initialTab?: DirectoryTab; scope?: "public" | "staff" }) {
+  const { state, admin } = useStore();
   const qs = useSearchParams();
-  const [tab, setTab] = useState<DirectoryTab>(initialTab);
+  const [tab, setTab] = useState<DirectoryTab>(scope === "public" && !PUBLIC_TABS.includes(initialTab) ? "clubs" : initialTab);
   const [q, setQ] = useState(qs.get("q") ?? "");
   const [county, setCounty] = useState("");
   const [sport, setSport] = useState("");
@@ -49,14 +52,9 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  // Clubs and facilities are public; every other register is restricted.
-  const staffView = !!me?.staff && can("directory.view");
-  const allowed = tab === "facilities" || tab === "clubs" || (!!me && (me.staff ? can("directory.view") : !!state.club));
-  const reason = !me
-    ? "The register of registered people and clubs is not public."
-    : me.staff
-      ? "Your role does not include the restricted directory."
-      : "Only verified clubs can see their own roster here. Your registration is still waiting for verification.";
+  const staffView = scope === "staff";
+  const tabs = staffView ? (Object.keys(LABEL) as DirectoryTab[]) : PUBLIC_TABS;
+  const allowed = true;
 
   // Load people from the server (scoped to what this account may see), debounced for typing.
   useEffect(() => {
@@ -120,35 +118,19 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
     <div className="mx-auto max-w-[1500px] px-5 pb-24">
       <div className="-mt-8 rounded-2xl border border-line bg-white p-5 shadow-[0_40px_80px_-50px_rgba(6,45,87,0.5)] sm:p-7">
         <div className="flex flex-wrap gap-2">
-          {(Object.keys(LABEL) as DirectoryTab[]).map((t) => (
+          {tabs.map((t) => (
             <button
               key={t}
               onClick={() => reset(() => { setTab(t); setPeople(null); setAffil(""); })}
               aria-pressed={tab === t}
               className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-bold transition ${tab === t ? "bg-forest-800 text-white" : "bg-bone text-ink-2 hover:bg-forest-100"}`}
             >
-              {t !== "facilities" && t !== "clubs" && !(me && (me.staff ? can("directory.view") : state.club)) && <Lock size={13} />}
               {LABEL[t]}
             </button>
           ))}
         </div>
 
-        {!allowed ? (
-          <div className="mx-auto my-12 max-w-md text-center">
-            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-forest-100 text-forest-800"><Lock size={26} /></span>
-            <h2 className="mt-4 text-xl font-extrabold text-forest-900">Restricted register</h2>
-            <p className="mt-2 text-sm text-ink-2">{reason}</p>
-            <p className="mt-1 text-sm text-ink-3">
-              Individuals register on the public site and are verified before they are recorded. Clubs, facilities, events and certificate verification are public.
-            </p>
-            <div className="mt-5 flex flex-wrap justify-center gap-3">
-              {!me && <Link href="/login" className="rounded-lg bg-forest-800 px-5 py-2.5 text-sm font-bold text-white">Sign in</Link>}
-              {!me && <Link href="/register" className="rounded-lg bg-gold px-5 py-2.5 text-sm font-bold text-forest-950">Register</Link>}
-              {member && <Link href="/account" className="rounded-lg bg-forest-800 px-5 py-2.5 text-sm font-bold text-white">My account</Link>}
-              <button onClick={() => reset(() => setTab("facilities"))} className="rounded-lg border border-line px-5 py-2.5 text-sm font-bold text-ink-2">Browse facilities</button>
-            </div>
-          </div>
-        ) : (
+        {(
           <>
             <div className={`mt-5 grid gap-3 ${tab === "players" && staffView ? "md:grid-cols-[1fr_200px_200px_200px]" : "md:grid-cols-[1fr_220px_200px]"}`}>
               <div className="relative">

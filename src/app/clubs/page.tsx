@@ -8,12 +8,12 @@ export const metadata = { title: "Clubs | National Sports Registry, Kenya" };
 export default function Page() {
   return (
     <SiteShell>
-      <PageHero eyebrow="Clubs & organisations" title={<>Registered <em className="text-gold">clubs.</em></>}>
-        Clubs, academies, federations, sports businesses, facility operators and event organisers.
+      <PageHero eyebrow="Public register" title={<>Registered <em className="text-gold">clubs.</em></>}>
+        Verified clubs, academies, federations, sports businesses and facility operators across Kenya. Find yours, or register it.
       </PageHero>
       <div className="bg-bone pt-12">
         <Suspense fallback={<BlockLoader label="Loading the register" />}>
-          <DirectoryView initialTab="clubs" />
+          <DirectoryView initialTab="clubs" scope="public" />
         </Suspense>
       </div>
     </SiteShell>

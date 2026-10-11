@@ -8,12 +8,11 @@ import { Logo } from "./Logo";
 import { useLang } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 
-const NAV: { href: string; label: string; sw: string; gated?: boolean }[] = [
+const NAV: { href: string; label: string; sw: string }[] = [
   { href: "/", label: "Home", sw: "Mwanzo" },
   { href: "/register", label: "Register", sw: "Sajili" },
   { href: "/clubs", label: "Clubs", sw: "Klabu" },
-    { href: "/teams", label: "Technical Teams", sw: "Timu za Kiufundi", gated: true },
-  { href: "/verify", label: "Verify", sw: "Thibitisha" },
+      { href: "/verify", label: "Verify", sw: "Thibitisha" },
   { href: "/facilities", label: "Facilities", sw: "Vituo" },
   { href: "/events", label: "Events", sw: "Matukio" },
   { href: "/sports-act", label: "Sports Act", sw: "Sheria ya Michezo" },
@@ -23,10 +22,8 @@ const NAV: { href: string; label: string; sw: string; gated?: boolean }[] = [
 
 export function Header() {
   const { lang, setLang } = useLang();
-  const { user, member, state, can } = useStore();
-  // Registers of people are restricted: show those links only to accounts that can open them.
-  const canSeePeople = (!!user && can("directory.view")) || (!!member && !!state.club);
-  const nav = NAV.filter((n) => !n.gated || canSeePeople);
+  const { user, member, state } = useStore();
+  const nav = NAV;
   const unread = state.notifications.filter((n) => !n.read).length;
   const path = usePathname();
   const router = useRouter();
@@ -51,7 +48,7 @@ export function Header() {
   const go = (e: React.FormEvent) => {
     e.preventDefault();
     if (!q.trim()) return;
-    router.push(`/directory?q=${encodeURIComponent(q.trim())}`);
+    router.push(`/clubs?q=${encodeURIComponent(q.trim())}`);
     setSearching(false);
     setQ("");
   };
@@ -96,7 +93,7 @@ export function Header() {
                 autoFocus
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search players, clubs, coaches, facilities…"
+                placeholder="Search clubs and facilities…"
                 className="min-w-0 flex-1 px-3 py-2.5 text-sm outline-none"
               />
               <button type="submit" className="bg-forest-800 px-4 py-2.5 text-sm font-bold text-white">Search</button>

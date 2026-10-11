@@ -25,7 +25,7 @@ export default function Page() {
             <p>To register and verify sports stakeholders under the Sports Act 2013, to issue and verify certificates, to administer fees, and to maintain a register of facilities. We do not use it for advertising.</p>
           </S>
           <S t="Who can see it">
-            <p>The public sees only facilities, events and certificate verification. The register of players and clubs is restricted. Your own officers (your county, your federation, the Registrar) see what they need to verify you; federations do not see ID, KRA PIN, phone or email. A club sees only its own roster. Uploaded files are never public.</p>
+            <p>The public sees only verified clubs, facilities, events and certificate verification. Registers of people are available only to Ministry staff in their scope. Your own officers (your county, your federation, the Registrar) see what they need to verify you; federations do not see ID, KRA PIN, phone or email. A club sees only its own roster. Uploaded files are never public.</p>
           </S>
           <S t="Children">
             <p>For players under 18 a parent or guardian must consent at registration. Photos and videos of minors are visible only to the registering account and verifying officers.</p>

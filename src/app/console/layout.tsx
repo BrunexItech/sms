@@ -15,6 +15,7 @@ import {
   MapPinned,
   Settings,
   UsersRound,
+  Users,
   Wallet,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -24,6 +25,7 @@ import { useStore } from "@/lib/store";
 const NAV: { href: string; label: string; icon: React.ReactNode; perm?: Permission | Permission[] }[] = [
   { href: "/console", label: "Overview", icon: <LayoutDashboard size={18} /> },
   { href: "/console/applications", label: "Applications", icon: <ClipboardList size={18} />, perm: "applications.view" },
+  { href: "/console/registers", label: "Registers", icon: <Users size={18} />, perm: "directory.view" },
   { href: "/console/events", label: "Events", icon: <CalendarCheck size={18} />, perm: "applications.review" },
   { href: "/console/facilities", label: "Facilities", icon: <MapPinned size={18} />, perm: "facilities.verify" },
   { href: "/console/federations", label: "Federations", icon: <Landmark size={18} />, perm: "federations.manage" },

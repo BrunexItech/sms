@@ -28,6 +28,13 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      { source: "/players", destination: "/clubs", permanent: false },
+      { source: "/teams", destination: "/clubs", permanent: false },
+      { source: "/directory", destination: "/clubs", permanent: false },
+    ];
+  },
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${API}/api/:path*` }];
   },

@@ -218,7 +218,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "settings.manage": "Manage settings & fees",
   "audit.view": "View audit log",
   "reports.export": "Export reports",
-  "directory.view": "See the restricted directory",
+  "directory.view": "See the registers of people in your scope",
   "federations.manage": "Manage federations",
   "roles.manage": "Change role rights",
 };
