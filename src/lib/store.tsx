@@ -147,7 +147,7 @@ type Boot = Partial<State> & {
   me: Me | null;
   facilities?: Facility[];
   club?: ClubInfo | null;
-  payments?: { mpesa: boolean; demoOtp: boolean };
+  payments?: { mpesa: boolean; demoOtp: boolean; demo: boolean };
   evidence?: AppConfig["evidence"];
 };
 
@@ -162,7 +162,7 @@ const EMPTY: State = {
   stats: { players: 0, clubs: 0, teams: 0, scouts: 0, facilities: 0, events: 0, bySport: {} },
   club: null,
   notifications: [],
-  config: { mpesa: false, demoOtp: true, evidence: { enabled: true, levels: [], sports: [], clubDocuments: true } },
+  config: { mpesa: false, demoOtp: true, demo: false, evidence: { enabled: true, levels: [], sports: [], clubDocuments: true } },
 };
 
 // Status change → the server-side action name.

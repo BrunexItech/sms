@@ -240,5 +240,7 @@ export interface EvidenceRule {
 export interface AppConfig {
   mpesa: boolean;
   demoOtp: boolean;
+  /** True only on demo deployments that were seeded with sample accounts. */
+  demo: boolean;
   evidence: EvidenceRule;
 }

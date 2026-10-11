@@ -24,7 +24,7 @@ const DEMO = [
 ];
 
 export function LoginView() {
-  const { login, me, logout } = useStore();
+  const { login, me, logout, state } = useStore();
   const router = useRouter();
   const [id, setId] = useState("");
   const [pw, setPw] = useState("");
@@ -91,6 +91,7 @@ export function LoginView() {
         </p>
       </section>
 
+      {state.config.demo && (
       <section className="rounded-2xl border border-line bg-white p-6 sm:p-8 lg:-mt-8">
         <h2 className="text-lg font-extrabold text-forest-900">Demo accounts</h2>
         <p className="mt-3 flex gap-2.5 rounded-lg border-l-4 border-gold bg-gold-soft p-3 text-[12.5px] text-ink-2">
@@ -112,6 +113,7 @@ export function LoginView() {
           ))}
         </ul>
       </section>
+      )}
     </div>
   );
 }

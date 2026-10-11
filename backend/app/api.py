@@ -386,7 +386,7 @@ def health():
 def bootstrap(facilities: int = 1, db: Session = Depends(get_db), u: User | None = Depends(optional_user)):
     out = {
         "me": user_out(u) if u else None, "fees": fees(db), "stats": stats(db), "evidence": evidence_rule(db),
-        "payments": {"mpesa": C.MPESA_READY, "demoOtp": not C.PRODUCTION and not C.MPESA_READY},
+        "payments": {"mpesa": C.MPESA_READY, "demoOtp": not C.PRODUCTION and not C.MPESA_READY, "demo": C.SEED_DEMO},
         "federations": [federation_out(f) for f in db.scalars(select(Federation).order_by(Federation.sport_name)).all()],
         "events": [event_out(e) for e in db.scalars(select(Event).where(Event.status == "Approved").order_by(Event.date)).all()],
     }
