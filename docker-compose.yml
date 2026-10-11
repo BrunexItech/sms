@@ -1,0 +1,38 @@
+# Web + API + PostgreSQL. Bind to localhost; put your reverse proxy (nginx/Caddy) in front for TLS.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sports
+      POSTGRES_USER: sports
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes: [dbdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sports"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://sports:${POSTGRES_PASSWORD}@db:5432/sports
+      APP_ENV: production
+    volumes: [uploads:/data/uploads]
+
+  web:
+    build:
+      context: .
+      args:
+        API_URL: http://api:8000
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["127.0.0.1:${WEB_PORT:-8090}:3000"]
+
+volumes:
+  dbdata:
+  uploads:
