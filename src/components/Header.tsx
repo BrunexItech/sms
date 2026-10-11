@@ -8,12 +8,13 @@ import { Logo } from "./Logo";
 import { useLang } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 
-const NAV: { href: string; label: string; sw: string }[] = [
+const NAV: { href: string; label: string; sw: string; gated?: boolean }[] = [
   { href: "/", label: "Home", sw: "Mwanzo" },
   { href: "/register", label: "Register", sw: "Sajili" },
-  { href: "/clubs", label: "Clubs", sw: "Klabu" },
-  { href: "/players", label: "Players", sw: "Wachezaji" },
-  { href: "/teams", label: "Technical Teams", sw: "Timu za Kiufundi" },
+  { href: "/clubs", label: "Clubs", sw: "Klabu", gated: true },
+  { href: "/players", label: "Players", sw: "Wachezaji", gated: true },
+  { href: "/teams", label: "Technical Teams", sw: "Timu za Kiufundi", gated: true },
+  { href: "/verify", label: "Verify", sw: "Thibitisha" },
   { href: "/facilities", label: "Facilities", sw: "Vituo" },
   { href: "/events", label: "Events", sw: "Matukio" },
   { href: "/sports-act", label: "Sports Act", sw: "Sheria ya Michezo" },
@@ -23,7 +24,10 @@ const NAV: { href: string; label: string; sw: string }[] = [
 
 export function Header() {
   const { lang, setLang } = useLang();
-  const { user, member, state } = useStore();
+  const { user, member, state, can } = useStore();
+  // Registers of people are restricted: show those links only to accounts that can open them.
+  const canSeePeople = (!!user && can("directory.view")) || (!!member && !!state.club);
+  const nav = NAV.filter((n) => !n.gated || canSeePeople);
   const unread = state.notifications.filter((n) => !n.read).length;
   const path = usePathname();
   const router = useRouter();
@@ -103,7 +107,7 @@ export function Header() {
             </form>
           ) : (
           <nav className="hidden items-center gap-0.5 xl:flex" aria-label="Primary">
-            {NAV.map((n) => (
+            {nav.map((n) => (
               <Link
                 key={n.href}
                 href={n.href}
@@ -145,7 +149,7 @@ export function Header() {
         {open && (
           <nav className="border-t border-line bg-white px-5 py-3 xl:hidden" aria-label="Mobile">
             <div className="grid gap-1 sm:grid-cols-2">
-              {NAV.map((n) => (
+              {nav.map((n) => (
                 <Link
                   key={n.href}
                   href={n.href}

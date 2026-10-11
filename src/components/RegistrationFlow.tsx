@@ -136,6 +136,7 @@ export function RegistrationFlow({
   const { state, register, member, user, federationName } = useStore();
   const qs = useSearchParams();
   const queryPreset = qs.get("sport");
+  const asParam = qs.get("as");
   const [step, setStep] = useState(1);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
@@ -144,7 +145,7 @@ export function RegistrationFlow({
   const top = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState<Form>({
-    type: "Player / Sportsperson",
+    type: asParam === "club" ? "Club" : "Player / Sportsperson",
     name: "",
     idNo: "",
     kra: "",
@@ -289,6 +290,17 @@ export function RegistrationFlow({
         <div key={step} className="step-anim">
           {step === 1 && (
             <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <span className="mb-1.5 block text-[13px] font-semibold">I am registering as</span>
+                <div role="radiogroup" className="grid grid-cols-3 gap-2">
+                  {([["Player / Sportsperson", "A player"], ["Club", "A club"]] as const).map(([t, label]) => (
+                    <button key={t} type="button" role="radio" aria-checked={form.type === t} onClick={() => setForm((f) => ({ ...f, type: t, role: "" }))}
+                      className={`rounded-xl border px-3 py-2.5 text-sm font-bold transition ${form.type === t ? "border-forest-700 bg-forest-100 text-forest-900" : "border-line bg-white text-ink-2 hover:border-forest-700/50"}`}>{label}</button>
+                  ))}
+                  <button type="button" role="radio" aria-checked={form.type !== "Player / Sportsperson" && form.type !== "Club"} onClick={() => setForm((f) => ({ ...f, type: f.type === "Player / Sportsperson" || f.type === "Club" ? "Coach" : f.type, role: "" }))}
+                    className={`rounded-xl border px-3 py-2.5 text-sm font-bold transition ${form.type !== "Player / Sportsperson" && form.type !== "Club" ? "border-forest-700 bg-forest-100 text-forest-900" : "border-line bg-white text-ink-2 hover:border-forest-700/50"}`}>Coach, official or other</button>
+                </div>
+              </div>
               <Field label="Full Names" required error={errors.name} className="sm:col-span-2">
                 <input className={inputCls} placeholder="Enter full names" value={form.name} onChange={(e) => set("name", e.target.value)} autoComplete="name" />
               </Field>
