@@ -26,6 +26,18 @@ Submitted ──▶ Under review ──▶ Endorsed ──▶ Approved ──▶
 4. **Sports Registrar** approves (certificate issued) or rejects (reason required). Approval is blocked if the fee is unpaid.
 5. **Compliance & Integrity Officer** or the Registrar suspends or reinstates, with a recorded reason.
 
+## Sports, organisations and roles (from the Ministry's structure document)
+
+The catalogue follows `sports_structure.docx` exactly:
+
+- **Sports and organisations directory**: 44 entries (athletics through Special Olympics, plus "Other emerging and traditional sports"), with the federation or organisation name as written in the document. The document describes the list as an initial directory for validation, so every entry starts as **To be confirmed**; the Registrar confirms or corrects each in the Control Center. Five sports from the earlier brief that are not in the document (water polo, fencing, surfing, skateboarding, ice sports) are kept under "Other" pending review.
+- **Role catalogue**: 155 roles in six groups (club leadership and administration, teams and coaching, officials and competitions, health/welfare/integrity, operations and communications, and sport-specific roles for 16 sport groups).
+- **Club officials**: a club must name its Chairperson/President, Secretary-General/Secretary and Treasurer/Finance Officer; the CEO and any other leadership role (vice-chair, board member, legal, compliance, and so on) can be added.
+- **Individuals with a role**: coaches, technical team, scouts, officials, health and welfare staff and operations staff each pick their role from the catalogue. Sport-specific roles only appear for that sport.
+- **Unlisted sports**: choosing "Other emerging and traditional sports" asks for the sport's name; the Registrar reviews it with the application.
+
+An existing server picks up new catalogue entries automatically on start (names are only refreshed on rows nobody has edited).
+
 ## Control Center and rights
 
 The **Super Administrator** holds every right and controls who holds which. In the Control Center they:

@@ -1,0 +1,1193 @@
+[
+ {
+  "id": "chairperson-president",
+  "name": "Chairperson/President",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "vice-chairperson-vice-president",
+  "name": "Vice-Chairperson/Vice-President",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "chief-executive-officer-ceo",
+  "name": "Chief Executive Officer (CEO)",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "executive-director-general-manager",
+  "name": "Executive Director/General Manager",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "secretary-general-secretary",
+  "name": "Secretary-General/Secretary",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "assistant-secretary",
+  "name": "Assistant Secretary",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "treasurer-finance-officer",
+  "name": "Treasurer/Finance Officer",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "board-or-executive-committee-member",
+  "name": "Board or Executive Committee Member",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "club-administrator",
+  "name": "Club Administrator",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "operations-manager",
+  "name": "Operations Manager",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "legal-officer",
+  "name": "Legal Officer",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "compliance-registration-officer",
+  "name": "Compliance/Registration Officer",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "internal-auditor",
+  "name": "Internal Auditor",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "risk-officer",
+  "name": "Risk Officer",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "procurement-officer",
+  "name": "Procurement Officer",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "membership-officer",
+  "name": "Membership Officer",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "county-regional-branch-coordinator",
+  "name": "County/Regional Branch Coordinator",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "athletes-representative",
+  "name": "Athletes’ Representative",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "women-s-representative",
+  "name": "Women’s Representative",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "youth-representative",
+  "name": "Youth Representative",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "disability-para-sport-representative",
+  "name": "Disability/Para-sport Representative",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "elections-officer-returning-officer",
+  "name": "Elections Officer/Returning Officer",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "ethics-officer",
+  "name": "Ethics Officer",
+  "group": "Club leadership and administration",
+  "type": "Club official"
+ },
+ {
+  "id": "athlete-player-participant",
+  "name": "Athlete/Player/Participant",
+  "group": "Teams and coaching",
+  "type": "Player / Sportsperson"
+ },
+ {
+  "id": "team-captain",
+  "name": "Team Captain",
+  "group": "Teams and coaching",
+  "type": "Player / Sportsperson"
+ },
+ {
+  "id": "vice-captain",
+  "name": "Vice-Captain",
+  "group": "Teams and coaching",
+  "type": "Player / Sportsperson"
+ },
+ {
+  "id": "team-manager",
+  "name": "Team Manager",
+  "group": "Teams and coaching",
+  "type": "Technical Team"
+ },
+ {
+  "id": "assistant-team-manager",
+  "name": "Assistant Team Manager",
+  "group": "Teams and coaching",
+  "type": "Technical Team"
+ },
+ {
+  "id": "head-coach",
+  "name": "Head Coach",
+  "group": "Teams and coaching",
+  "type": "Coach"
+ },
+ {
+  "id": "assistant-coach",
+  "name": "Assistant Coach",
+  "group": "Teams and coaching",
+  "type": "Coach"
+ },
+ {
+  "id": "youth-academy-coach",
+  "name": "Youth/Academy Coach",
+  "group": "Teams and coaching",
+  "type": "Coach"
+ },
+ {
+  "id": "goalkeeper-coach",
+  "name": "Goalkeeper Coach",
+  "group": "Teams and coaching",
+  "type": "Coach"
+ },
+ {
+  "id": "discipline-event-specific-coach",
+  "name": "Discipline/Event-Specific Coach",
+  "group": "Teams and coaching",
+  "type": "Coach"
+ },
+ {
+  "id": "technical-director",
+  "name": "Technical Director",
+  "group": "Teams and coaching",
+  "type": "Technical Team"
+ },
+ {
+  "id": "national-teams-director",
+  "name": "National Teams Director",
+  "group": "Teams and coaching",
+  "type": "Technical Team"
+ },
+ {
+  "id": "talent-identification-development-officer",
+  "name": "Talent Identification/Development Officer",
+  "group": "Teams and coaching",
+  "type": "Scout"
+ },
+ {
+  "id": "performance-analyst",
+  "name": "Performance Analyst",
+  "group": "Teams and coaching",
+  "type": "Technical Team"
+ },
+ {
+  "id": "scout-recruitment-officer",
+  "name": "Scout/Recruitment Officer",
+  "group": "Teams and coaching",
+  "type": "Scout"
+ },
+ {
+  "id": "referee",
+  "name": "Referee",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "umpire",
+  "name": "Umpire",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "judge",
+  "name": "Judge",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "technical-official",
+  "name": "Technical Official",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "official-assessor-evaluator",
+  "name": "Official Assessor/Evaluator",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "competition-director",
+  "name": "Competition Director",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "event-manager",
+  "name": "Event Manager",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "tournament-secretary",
+  "name": "Tournament Secretary",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "fixture-entries-officer",
+  "name": "Fixture/Entries Officer",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "accreditation-officer",
+  "name": "Accreditation Officer",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "results-and-statistics-officer",
+  "name": "Results and Statistics Officer",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "match-commissioner",
+  "name": "Match Commissioner",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "venue-coordinator",
+  "name": "Venue Coordinator",
+  "group": "Officials and competitions",
+  "type": "Match / Competition Official"
+ },
+ {
+  "id": "team-doctor",
+  "name": "Team Doctor",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "medical-officer-nurse",
+  "name": "Medical Officer/Nurse",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "physiotherapist",
+  "name": "Physiotherapist",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "first-aid-officer",
+  "name": "First-Aid Officer",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "sports-scientist",
+  "name": "Sports Scientist",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "strength-and-conditioning-coach",
+  "name": "Strength and Conditioning Coach",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "sports-psychologist",
+  "name": "Sports Psychologist",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "nutritionist",
+  "name": "Nutritionist",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "rehabilitation-specialist",
+  "name": "Rehabilitation Specialist",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "safeguarding-welfare-officer",
+  "name": "Safeguarding/Welfare Officer",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "child-protection-lead",
+  "name": "Child-Protection Lead",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "anti-doping-officer-education-officer",
+  "name": "Anti-Doping Officer/Education Officer",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "para-sport-classification-officer",
+  "name": "Para-sport Classification Officer",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "integrity-officer",
+  "name": "Integrity Officer",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "complaints-and-disciplinary-case-officer",
+  "name": "Complaints and Disciplinary Case Officer",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "safety-and-security-officer",
+  "name": "Safety and Security Officer",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "emergency-response-lead",
+  "name": "Emergency-Response Lead",
+  "group": "Health, welfare and integrity",
+  "type": "Health & Welfare Staff"
+ },
+ {
+  "id": "kit-equipment-manager",
+  "name": "Kit/Equipment Manager",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "logistics-and-transport-coordinator",
+  "name": "Logistics and Transport Coordinator",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "facilities-grounds-manager",
+  "name": "Facilities/Grounds Manager",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "pitch-court-pool-manager",
+  "name": "Pitch/Court/Pool Manager",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "media-and-communications-officer",
+  "name": "Media and Communications Officer",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "digital-social-media-officer",
+  "name": "Digital/Social Media Officer",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "marketing-officer",
+  "name": "Marketing Officer",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "sponsorship-and-partnerships-officer",
+  "name": "Sponsorship and Partnerships Officer",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "ticketing-and-hospitality-officer",
+  "name": "Ticketing and Hospitality Officer",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "fan-engagement-officer",
+  "name": "Fan Engagement Officer",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "grants-and-fundraising-officer",
+  "name": "Grants and Fundraising Officer",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "data-protection-ict-officer",
+  "name": "Data Protection/ICT Officer",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "system-administrator",
+  "name": "System Administrator",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "volunteer-coordinator",
+  "name": "Volunteer Coordinator",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "travel-and-accommodation-coordinator",
+  "name": "Travel and Accommodation Coordinator",
+  "group": "Operations and communications",
+  "type": "Operations & Admin Staff"
+ },
+ {
+  "id": "sprints-coach",
+  "name": "Sprints Coach",
+  "group": "Athletics roles",
+  "type": "Coach",
+  "sports": [
+   "athletics"
+  ]
+ },
+ {
+  "id": "distance-coach",
+  "name": "Distance Coach",
+  "group": "Athletics roles",
+  "type": "Coach",
+  "sports": [
+   "athletics"
+  ]
+ },
+ {
+  "id": "hurdles-coach",
+  "name": "Hurdles Coach",
+  "group": "Athletics roles",
+  "type": "Coach",
+  "sports": [
+   "athletics"
+  ]
+ },
+ {
+  "id": "jumps-coach",
+  "name": "Jumps Coach",
+  "group": "Athletics roles",
+  "type": "Coach",
+  "sports": [
+   "athletics"
+  ]
+ },
+ {
+  "id": "throws-coach",
+  "name": "Throws Coach",
+  "group": "Athletics roles",
+  "type": "Coach",
+  "sports": [
+   "athletics"
+  ]
+ },
+ {
+  "id": "combined-events-coach",
+  "name": "Combined Events Coach",
+  "group": "Athletics roles",
+  "type": "Coach",
+  "sports": [
+   "athletics"
+  ]
+ },
+ {
+  "id": "meet-manager",
+  "name": "Meet Manager",
+  "group": "Athletics roles",
+  "type": "Technical Team",
+  "sports": [
+   "athletics"
+  ]
+ },
+ {
+  "id": "team-leader",
+  "name": "Team Leader",
+  "group": "Athletics roles",
+  "type": "Technical Team",
+  "sports": [
+   "athletics"
+  ]
+ },
+ {
+  "id": "forwards-coach",
+  "name": "Forwards Coach",
+  "group": "Rugby roles",
+  "type": "Coach",
+  "sports": [
+   "rugby"
+  ]
+ },
+ {
+  "id": "backs-coach",
+  "name": "Backs Coach",
+  "group": "Rugby roles",
+  "type": "Coach",
+  "sports": [
+   "rugby"
+  ]
+ },
+ {
+  "id": "skills-coach",
+  "name": "Skills Coach",
+  "group": "Rugby roles",
+  "type": "Coach",
+  "sports": [
+   "rugby"
+  ]
+ },
+ {
+  "id": "kicking-coach",
+  "name": "Kicking Coach",
+  "group": "Rugby roles",
+  "type": "Coach",
+  "sports": [
+   "rugby"
+  ]
+ },
+ {
+  "id": "statistician",
+  "name": "Statistician",
+  "group": "Basketball roles",
+  "type": "Technical Team",
+  "sports": [
+   "basketball"
+  ]
+ },
+ {
+  "id": "basketball-performance-analyst",
+  "name": "Basketball Performance Analyst",
+  "group": "Basketball roles",
+  "type": "Technical Team",
+  "sports": [
+   "basketball"
+  ]
+ },
+ {
+  "id": "batting-coach",
+  "name": "Batting Coach",
+  "group": "Cricket roles",
+  "type": "Coach",
+  "sports": [
+   "cricket"
+  ]
+ },
+ {
+  "id": "bowling-coach",
+  "name": "Bowling Coach",
+  "group": "Cricket roles",
+  "type": "Coach",
+  "sports": [
+   "cricket"
+  ]
+ },
+ {
+  "id": "fielding-coach",
+  "name": "Fielding Coach",
+  "group": "Cricket roles",
+  "type": "Coach",
+  "sports": [
+   "cricket"
+  ]
+ },
+ {
+  "id": "wicketkeeping-coach",
+  "name": "Wicketkeeping Coach",
+  "group": "Cricket roles",
+  "type": "Coach",
+  "sports": [
+   "cricket"
+  ]
+ },
+ {
+  "id": "scorer",
+  "name": "Scorer",
+  "group": "Cricket roles",
+  "type": "Match / Competition Official",
+  "sports": [
+   "cricket"
+  ]
+ },
+ {
+  "id": "pitch-grounds-officer",
+  "name": "Pitch/Grounds Officer",
+  "group": "Cricket roles",
+  "type": "Operations & Admin Staff",
+  "sports": [
+   "cricket"
+  ]
+ },
+ {
+  "id": "swimming-coach",
+  "name": "Swimming Coach",
+  "group": "Aquatics roles",
+  "type": "Coach",
+  "sports": [
+   "swimming",
+   "water-polo",
+   "water-polo"
+  ]
+ },
+ {
+  "id": "open-water-coach",
+  "name": "Open-Water Coach",
+  "group": "Aquatics roles",
+  "type": "Coach",
+  "sports": [
+   "swimming",
+   "water-polo",
+   "water-polo"
+  ]
+ },
+ {
+  "id": "artistic-swimming-coach",
+  "name": "Artistic Swimming Coach",
+  "group": "Aquatics roles",
+  "type": "Coach",
+  "sports": [
+   "swimming",
+   "water-polo",
+   "water-polo"
+  ]
+ },
+ {
+  "id": "water-polo-coach",
+  "name": "Water Polo Coach",
+  "group": "Aquatics roles",
+  "type": "Coach",
+  "sports": [
+   "swimming",
+   "water-polo",
+   "water-polo"
+  ]
+ },
+ {
+  "id": "diving-coach",
+  "name": "Diving Coach",
+  "group": "Aquatics roles",
+  "type": "Coach",
+  "sports": [
+   "swimming",
+   "water-polo",
+   "water-polo"
+  ]
+ },
+ {
+  "id": "lifeguard",
+  "name": "Lifeguard",
+  "group": "Aquatics roles",
+  "type": "Health & Welfare Staff",
+  "sports": [
+   "swimming",
+   "water-polo",
+   "water-polo"
+  ]
+ },
+ {
+  "id": "pool-safety-officer",
+  "name": "Pool Safety Officer",
+  "group": "Aquatics roles",
+  "type": "Health & Welfare Staff",
+  "sports": [
+   "swimming",
+   "water-polo",
+   "water-polo"
+  ]
+ },
+ {
+  "id": "meet-entries-results-officer",
+  "name": "Meet Entries/Results Officer",
+  "group": "Aquatics roles",
+  "type": "Operations & Admin Staff",
+  "sports": [
+   "swimming",
+   "water-polo",
+   "water-polo"
+  ]
+ },
+ {
+  "id": "corner-staff",
+  "name": "Corner Staff",
+  "group": "Boxing and combat sports roles",
+  "type": "Technical Team",
+  "sports": [
+   "boxing",
+   "wrestling",
+   "judo",
+   "karate",
+   "taekwondo"
+  ]
+ },
+ {
+  "id": "weigh-in-official",
+  "name": "Weigh-in Official",
+  "group": "Boxing and combat sports roles",
+  "type": "Match / Competition Official",
+  "sports": [
+   "boxing",
+   "wrestling",
+   "judo",
+   "karate",
+   "taekwondo"
+  ]
+ },
+ {
+  "id": "timekeeper",
+  "name": "Timekeeper",
+  "group": "Boxing and combat sports roles",
+  "type": "Match / Competition Official",
+  "sports": [
+   "boxing",
+   "wrestling",
+   "judo",
+   "karate",
+   "taekwondo"
+  ]
+ },
+ {
+  "id": "ringside-doctor",
+  "name": "Ringside Doctor",
+  "group": "Boxing and combat sports roles",
+  "type": "Health & Welfare Staff",
+  "sports": [
+   "boxing",
+   "wrestling",
+   "judo",
+   "karate",
+   "taekwondo"
+  ]
+ },
+ {
+  "id": "combat-sport-safety-officer",
+  "name": "Combat-Sport Safety Officer",
+  "group": "Boxing and combat sports roles",
+  "type": "Health & Welfare Staff",
+  "sports": [
+   "boxing",
+   "wrestling",
+   "judo",
+   "karate",
+   "taekwondo"
+  ]
+ },
+ {
+  "id": "goalkeeper-coach-hockey",
+  "name": "Goalkeeper Coach",
+  "group": "Hockey roles",
+  "type": "Coach",
+  "sports": [
+   "hockey"
+  ]
+ },
+ {
+  "id": "pitch-coordinator",
+  "name": "Pitch Coordinator",
+  "group": "Hockey roles",
+  "type": "Operations & Admin Staff",
+  "sports": [
+   "hockey"
+  ]
+ },
+ {
+  "id": "singles-doubles-team-manager",
+  "name": "Singles/Doubles Team Manager",
+  "group": "Tennis, badminton, squash and table tennis roles",
+  "type": "Technical Team",
+  "sports": [
+   "tennis",
+   "badminton",
+   "squash",
+   "table-tennis"
+  ]
+ },
+ {
+  "id": "court-venue-coordinator",
+  "name": "Court/Venue Coordinator",
+  "group": "Tennis, badminton, squash and table tennis roles",
+  "type": "Operations & Admin Staff",
+  "sports": [
+   "tennis",
+   "badminton",
+   "squash",
+   "table-tennis"
+  ]
+ },
+ {
+  "id": "competition-secretary",
+  "name": "Competition Secretary",
+  "group": "Tennis, badminton, squash and table tennis roles",
+  "type": "Operations & Admin Staff",
+  "sports": [
+   "tennis",
+   "badminton",
+   "squash",
+   "table-tennis"
+  ]
+ },
+ {
+  "id": "club-captain",
+  "name": "Club Captain",
+  "group": "Golf roles",
+  "type": "Technical Team",
+  "sports": [
+   "golf"
+  ]
+ },
+ {
+  "id": "golf-professional-coach",
+  "name": "Golf Professional/Coach",
+  "group": "Golf roles",
+  "type": "Coach",
+  "sports": [
+   "golf"
+  ]
+ },
+ {
+  "id": "caddie-master",
+  "name": "Caddie Master",
+  "group": "Golf roles",
+  "type": "Operations & Admin Staff",
+  "sports": [
+   "golf"
+  ]
+ },
+ {
+  "id": "course-superintendent",
+  "name": "Course Superintendent",
+  "group": "Golf roles",
+  "type": "Operations & Admin Staff",
+  "sports": [
+   "golf"
+  ]
+ },
+ {
+  "id": "handicap-officer",
+  "name": "Handicap Officer",
+  "group": "Golf roles",
+  "type": "Match / Competition Official",
+  "sports": [
+   "golf"
+  ]
+ },
+ {
+  "id": "cycling-mechanic",
+  "name": "Cycling Mechanic",
+  "group": "Cycling roles",
+  "type": "Technical Team",
+  "sports": [
+   "cycling"
+  ]
+ },
+ {
+  "id": "race-commissaire",
+  "name": "Race Commissaire",
+  "group": "Cycling roles",
+  "type": "Match / Competition Official",
+  "sports": [
+   "cycling"
+  ]
+ },
+ {
+  "id": "route-safety-officer",
+  "name": "Route/Safety Officer",
+  "group": "Cycling roles",
+  "type": "Health & Welfare Staff",
+  "sports": [
+   "cycling"
+  ]
+ },
+ {
+  "id": "driver-rider",
+  "name": "Driver/Rider",
+  "group": "Motorsport roles",
+  "type": "Player / Sportsperson",
+  "sports": [
+   "motorsport"
+  ]
+ },
+ {
+  "id": "team-principal",
+  "name": "Team Principal",
+  "group": "Motorsport roles",
+  "type": "Technical Team",
+  "sports": [
+   "motorsport"
+  ]
+ },
+ {
+  "id": "crew-chief",
+  "name": "Crew Chief",
+  "group": "Motorsport roles",
+  "type": "Technical Team",
+  "sports": [
+   "motorsport"
+  ]
+ },
+ {
+  "id": "engineer",
+  "name": "Engineer",
+  "group": "Motorsport roles",
+  "type": "Technical Team",
+  "sports": [
+   "motorsport"
+  ]
+ },
+ {
+  "id": "mechanic",
+  "name": "Mechanic",
+  "group": "Motorsport roles",
+  "type": "Technical Team",
+  "sports": [
+   "motorsport"
+  ]
+ },
+ {
+  "id": "scrutineer",
+  "name": "Scrutineer",
+  "group": "Motorsport roles",
+  "type": "Match / Competition Official",
+  "sports": [
+   "motorsport"
+  ]
+ },
+ {
+  "id": "marshal",
+  "name": "Marshal",
+  "group": "Motorsport roles",
+  "type": "Match / Competition Official",
+  "sports": [
+   "motorsport"
+  ]
+ },
+ {
+  "id": "race-director",
+  "name": "Race Director",
+  "group": "Motorsport roles",
+  "type": "Technical Team",
+  "sports": [
+   "motorsport"
+  ]
+ },
+ {
+  "id": "chess-arbiter",
+  "name": "Chess Arbiter",
+  "group": "Chess roles",
+  "type": "Match / Competition Official",
+  "sports": [
+   "chess"
+  ]
+ },
+ {
+  "id": "tournament-director",
+  "name": "Tournament Director",
+  "group": "Chess roles",
+  "type": "Technical Team",
+  "sports": [
+   "chess"
+  ]
+ },
+ {
+  "id": "pairing-results-officer",
+  "name": "Pairing/Results Officer",
+  "group": "Chess roles",
+  "type": "Match / Competition Official",
+  "sports": [
+   "chess"
+  ]
+ },
+ {
+  "id": "game-specific-coach",
+  "name": "Game-Specific Coach",
+  "group": "Esports roles",
+  "type": "Coach",
+  "sports": [
+   "esports"
+  ]
+ },
+ {
+  "id": "esports-analyst",
+  "name": "Esports Analyst",
+  "group": "Esports roles",
+  "type": "Technical Team",
+  "sports": [
+   "esports"
+  ]
+ },
+ {
+  "id": "tournament-administrator",
+  "name": "Tournament Administrator",
+  "group": "Esports roles",
+  "type": "Operations & Admin Staff",
+  "sports": [
+   "esports"
+  ]
+ },
+ {
+  "id": "broadcast-production-staff",
+  "name": "Broadcast/Production Staff",
+  "group": "Esports roles",
+  "type": "Operations & Admin Staff",
+  "sports": [
+   "esports"
+  ]
+ },
+ {
+  "id": "technical-support",
+  "name": "Technical Support",
+  "group": "Esports roles",
+  "type": "Health & Welfare Staff",
+  "sports": [
+   "esports"
+  ]
+ },
+ {
+  "id": "athlete-guide-pilot",
+  "name": "Athlete Guide/Pilot",
+  "group": "Para-sport roles",
+  "type": "Player / Sportsperson",
+  "sports": [
+   "paralympic"
+  ]
+ },
+ {
+  "id": "assistive-technology-support",
+  "name": "Assistive-Technology Support",
+  "group": "Para-sport roles",
+  "type": "Health & Welfare Staff",
+  "sports": [
+   "paralympic"
+  ]
+ },
+ {
+  "id": "para-sport-coach",
+  "name": "Para-sport Coach",
+  "group": "Para-sport roles",
+  "type": "Coach",
+  "sports": [
+   "paralympic"
+  ]
+ },
+ {
+  "id": "classifier",
+  "name": "Classifier",
+  "group": "Para-sport roles",
+  "type": "Match / Competition Official",
+  "sports": [
+   "paralympic"
+  ]
+ },
+ {
+  "id": "interpreter-communication-support",
+  "name": "Interpreter/Communication Support",
+  "group": "Deaf sport roles",
+  "type": "Health & Welfare Staff",
+  "sports": [
+   "deaf-sport"
+  ]
+ },
+ {
+  "id": "deaf-sport-team-manager",
+  "name": "Deaf-sport Team Manager",
+  "group": "Deaf sport roles",
+  "type": "Technical Team",
+  "sports": [
+   "deaf-sport"
+  ]
+ },
+ {
+  "id": "institution-sports-director",
+  "name": "Institution Sports Director",
+  "group": "School and university sport roles",
+  "type": "Technical Team",
+  "sports": [
+   "university-sport"
+  ]
+ },
+ {
+  "id": "teacher-coach",
+  "name": "Teacher/Coach",
+  "group": "School and university sport roles",
+  "type": "Coach",
+  "sports": [
+   "university-sport"
+  ]
+ },
+ {
+  "id": "student-athlete",
+  "name": "Student-Athlete",
+  "group": "School and university sport roles",
+  "type": "Player / Sportsperson",
+  "sports": [
+   "university-sport"
+  ]
+ },
+ {
+  "id": "competition-coordinator",
+  "name": "Competition Coordinator",
+  "group": "School and university sport roles",
+  "type": "Operations & Admin Staff",
+  "sports": [
+   "university-sport"
+  ]
+ }
+]

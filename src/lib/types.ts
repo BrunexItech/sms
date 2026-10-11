@@ -5,6 +5,9 @@ export const STAKEHOLDER_TYPES = [
   "Technical Team",
   "Coach",
   "Scout",
+  "Match / Competition Official",
+  "Health & Welfare Staff",
+  "Operations & Admin Staff",
   "Sports Agent / Manager",
   "Sports Business",
   "Facility Operator",
@@ -120,7 +123,12 @@ export interface Application {
   federation: string;
   level: string;
   clubName: string;
-  clubOfficials?: { chairman: string; ceo: string; secretary: string; phone: string };
+  clubOfficials?: ClubOfficial[] | null;
+  /** Role from the role catalogue (individuals), and its display name. */
+  role?: string | null;
+  roleName?: string | null;
+  /** Name given when the sport is "Other emerging and traditional sports". */
+  sportOther?: string;
   hasContract?: "Yes" | "No";
   notes: string;
   status: AppStatus;
@@ -244,3 +252,31 @@ export interface AppConfig {
   demo: boolean;
   evidence: EvidenceRule;
 }
+
+export interface ClubOfficial {
+  role: string; // role catalogue id
+  name: string;
+  phone: string;
+  email: string;
+}
+
+export interface RoleItem {
+  id: string;
+  name: string;
+  group: string;
+  type: string;
+  sports?: string[];
+}
+
+/** Types whose registrants choose a specific role from the catalogue. */
+export const PERSONNEL_TYPES: StakeholderType[] = [
+  "Technical Team",
+  "Coach",
+  "Scout",
+  "Match / Competition Official",
+  "Health & Welfare Staff",
+  "Operations & Admin Staff",
+];
+
+/** Leadership roles every club must name (catalogue ids). */
+export const REQUIRED_OFFICIALS = ["chairperson-president", "secretary-general-secretary", "treasurer-finance-officer"];

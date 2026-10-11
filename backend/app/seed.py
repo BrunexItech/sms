@@ -40,6 +40,22 @@ def _facilities(db: Session, t: str, demo: bool) -> None:
                                       "note": "Routine inspection. Surface and floodlights serviceable."}] if verified else []))
 
 
+def sync_catalogue(db: Session) -> None:
+    """Make an existing database match the sports/organisations directory in refdata. Safe to run on every start:
+    it adds missing entries and refreshes only rows nobody has edited."""
+    t = _iso(0)
+    existing = {f.sport_id: f for f in db.scalars(select(Federation)).all()}
+    for sid, sname, fed in R.SPORTS:
+        f = existing.get(sid)
+        if f is None:
+            db.add(Federation(sport_id=sid, sport_name=sname, name=fed, status="To be confirmed", updated_at=t))
+            continue
+        f.sport_name = sname
+        if f.status == "To be confirmed" and f.name == R.LEGACY_FEDERATION_NAMES.get(sid):
+            f.name, f.updated_at = fed, t
+    db.commit()
+
+
 def seed(db: Session) -> None:
     if db.scalar(select(func.count()).select_from(User)):
         return

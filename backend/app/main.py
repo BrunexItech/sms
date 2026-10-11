@@ -14,7 +14,7 @@ from .api2 import router as router2
 from .db import Base, SessionLocal, engine
 from . import rbac
 from .models import Setting
-from .seed import seed
+from .seed import seed, sync_catalogue
 
 
 @asynccontextmanager
@@ -23,6 +23,7 @@ async def lifespan(_: FastAPI):
         Base.metadata.create_all(engine)  # production schemas are managed by `alembic upgrade head`
     with SessionLocal() as db:
         seed(db)
+        sync_catalogue(db)
         row = db.get(Setting, "role_perms")
         rbac.load_overrides(row.value if row else None)
     yield

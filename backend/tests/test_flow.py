@@ -53,7 +53,7 @@ def test_validation(anon):
 def test_full_club_and_player_workflow(client_factory, staff):
     club_c = client_factory()
     r, b = make(club_c, kind="Club", clubName="Workflow Warriors FC",
-                clubOfficials={"chairman": "Chair Person", "ceo": "", "secretary": "Sec Retary", "phone": ""})
+                clubOfficials=OFFICIALS)
     assert r.status_code == 201, r.text
     cid = r.json()["application"]["id"]
 
@@ -115,7 +115,7 @@ def test_full_club_and_player_workflow(client_factory, staff):
     rows = club_c.get("/api/directory?tab=players").json()["rows"]
     assert any(x["id"] == pid and x["name"] == "Roster Player One" for x in rows) and all("idNo" not in x for x in rows)
     other = client_factory()
-    make(other, kind="Club", clubName="Other Club FC", clubOfficials={"chairman": "A B", "secretary": "C D"})
+    make(other, kind="Club", clubName="Other Club FC", clubOfficials=OFFICIALS)
     assert other.get("/api/directory?tab=players").status_code == 403  # not verified yet
 
     # suspension needs a reason and is reversible
@@ -217,6 +217,12 @@ def test_login_rules(anon):
 
 
 # ───────────── control centre and media ─────────────
+OFFICIALS = [
+    {"role": "chairperson-president", "name": "Chair Person", "phone": "0712000001"},
+    {"role": "chief-executive-officer-ceo", "name": "Chief Exec", "phone": ""},
+    {"role": "secretary-general-secretary", "name": "Sec Retary", "phone": ""},
+    {"role": "treasurer-finance-officer", "name": "Tre Asurer", "phone": ""},
+]
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 MP4 = b"\x00\x00\x00\x18ftypmp42" + b"\x00" * 64
 

@@ -18,6 +18,8 @@ import type {
   GeoPoint,
   AppConfig,
   Notice,
+  RoleItem,
+  ClubOfficial,
   SportEvent,
   StakeholderType,
 } from "./types";
@@ -43,6 +45,7 @@ interface State {
   club: ClubInfo | null;
   notifications: Notice[];
   config: AppConfig;
+  roles: RoleItem[];
 }
 
 export interface RegisterDraft {
@@ -58,7 +61,9 @@ export interface RegisterDraft {
   sport: string;
   level: string;
   clubName: string;
-  clubOfficials?: { chairman: string; ceo: string; secretary: string; phone: string };
+  clubOfficials?: ClubOfficial[];
+  role?: string;
+  sportOther?: string;
   hasContract?: string;
   notes: string;
   dob?: string;
@@ -149,6 +154,7 @@ type Boot = Partial<State> & {
   club?: ClubInfo | null;
   payments?: { mpesa: boolean; demoOtp: boolean; demo: boolean };
   evidence?: AppConfig["evidence"];
+  catalogue?: { roles: RoleItem[] };
 };
 
 const EMPTY: State = {
@@ -162,6 +168,7 @@ const EMPTY: State = {
   stats: { players: 0, clubs: 0, teams: 0, scouts: 0, facilities: 0, events: 0, bySport: {} },
   club: null,
   notifications: [],
+  roles: [],
   config: { mpesa: false, demoOtp: true, demo: false, evidence: { enabled: true, levels: [], sports: [], clubDocuments: true } },
 };
 
@@ -209,6 +216,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         stats: b.stats ?? base.stats,
         club: b.club ?? null,
         notifications: b.notifications ?? [],
+        roles: b.catalogue?.roles ?? base.roles,
         config: b.payments && b.evidence ? { ...b.payments, evidence: b.evidence } : base.config,
       };
     });

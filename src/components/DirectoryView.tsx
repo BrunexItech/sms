@@ -12,13 +12,15 @@ import { Pill } from "./ui/Pill";
 import { inputCls } from "./ui/Field";
 import { BlockLoader } from "./ui/Spinner";
 
-export type DirectoryTab = "players" | "clubs" | "teams" | "scouts" | "facilities";
+export type DirectoryTab = "players" | "clubs" | "teams" | "scouts" | "officials" | "support" | "facilities";
 const PAGE = 15;
 const LABEL: Record<DirectoryTab, string> = {
   players: "Players",
   clubs: "Clubs & organisations",
   teams: "Technical teams & coaches",
   scouts: "Scouts & agents",
+  officials: "Officials & referees",
+  support: "Health, welfare & operations",
   facilities: "Facilities",
 };
 
@@ -59,7 +61,7 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
     const t = setTimeout(() => {
       setLoading(true);
       const p = new URLSearchParams({ tab, q, county, sport });
-      api<{ rows: { id: string; name: string; type: string; sport: string; county: string; subCounty: string; ward: string; status: string; certificateNo: string | null }[]; total: number }>(`/directory?${p}`)
+      api<{ rows: { id: string; name: string; type: string; role?: string | null; sport: string; county: string; subCounty: string; ward: string; status: string; certificateNo: string | null }[]; total: number }>(`/directory?${p}`)
         .then((r) => {
           if (cancelled) return;
           setErr("");
@@ -68,7 +70,7 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
             rows: r.rows.map((x) => ({
               key: x.id,
               name: x.name,
-              kind: x.type,
+              kind: x.role ?? x.type,
               sport: SPORT_BY_ID[x.sport]?.name ?? x.sport,
               place: [x.ward, x.subCounty, x.county].filter(Boolean).join(", "),
               status: x.status,

@@ -59,7 +59,7 @@ class Application(Base):
     federation: Mapped[str] = mapped_column(String, default="")
     level: Mapped[str] = mapped_column(String, default="Amateur")
     club_name: Mapped[str] = mapped_column(String, default="")
-    officials: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    officials: Mapped[list | dict | None] = mapped_column(JSON, nullable=True)
     has_contract: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str] = mapped_column(String, default="")
     status: Mapped[str] = mapped_column(String, default="Submitted", index=True)
@@ -77,6 +77,8 @@ class Application(Base):
     demo: Mapped[bool] = mapped_column(Boolean, default=False)
     photo_id: Mapped[str | None] = mapped_column(String, nullable=True)
     media_request: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    role: Mapped[str | None] = mapped_column(String, nullable=True)  # role catalogue id
+    sport_other: Mapped[str] = mapped_column(String, default="")  # name given when the sport is "other"
     dob: Mapped[str | None] = mapped_column(String, nullable=True)
     gender: Mapped[str | None] = mapped_column(String, nullable=True)
     guardian: Mapped[dict | None] = mapped_column(JSON, nullable=True)

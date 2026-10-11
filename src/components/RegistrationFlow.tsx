@@ -9,12 +9,17 @@ import { emptyPlace } from "@/lib/admin";
 import { errText, useStore } from "@/lib/store";
 import {
   COMPETITION_LEVELS,
+  PERSONNEL_TYPES,
   STAKEHOLDER_TYPES,
+  type ClubOfficial,
+  REQUIRED_OFFICIALS,
   type Application,
   type GeoPoint,
   type Place,
   type StakeholderType,
 } from "@/lib/types";
+import { DEFAULT_OFFICIALS, OfficialsEditor } from "./OfficialsEditor";
+import { RolePicker } from "./RolePicker";
 import { LocationFields } from "./LocationFields";
 import { SportPicker } from "./SportPicker";
 import { Field, inputCls } from "./ui/Field";
@@ -49,10 +54,9 @@ interface Form {
   password: string;
   confirm: string;
   clubName: string;
-  chairman: string;
-  ceo: string;
-  secretary: string;
-  clubPhone: string;
+  officials: ClubOfficial[];
+  role: string;
+  sportOther: string;
   hasContract: "" | "Yes" | "No";
   notes: string;
   dob: string;
@@ -97,9 +101,13 @@ function validate(step: number, f: Form, needPassword = false): Errors {
     if (!f.sport) e.sport = "Choose a sport.";
     if (ORG_TYPES.includes(f.type) && f.clubName.trim().length < 3) e.clubName = "Enter the organisation name.";
     if (f.type === "Club") {
-      if (!f.chairman.trim()) e.chairman = "Required for clubs.";
-      if (!f.secretary.trim()) e.secretary = "Required for clubs.";
+      for (const need of REQUIRED_OFFICIALS) {
+        const o = f.officials.find((x) => x.role === need);
+        if (!o || o.name.trim().length < 3) e[`official-${need}`] = "Required for clubs.";
+      }
     }
+    if (PERSONNEL_TYPES.includes(f.type) && !f.role) e.role = "Choose your role from the list.";
+    if (f.sport === "other" && f.sportOther.trim().length < 3) e.sportOther = "Tell us the name of the sport. The Registrar will review it.";
     if (f.type === "Player / Sportsperson") {
       if (!f.hasContract) e.hasContract = "Please answer this question.";
       const born = Date.parse(f.dob);
@@ -148,10 +156,9 @@ export function RegistrationFlow({
     password: "",
     confirm: "",
     clubName: "",
-    chairman: "",
-    ceo: "",
-    secretary: "",
-    clubPhone: "",
+    officials: DEFAULT_OFFICIALS,
+    role: "",
+    sportOther: "",
     hasContract: "",
     notes: "",
     dob: "",
@@ -204,10 +211,9 @@ export function RegistrationFlow({
         sport,
         level: form.level,
         clubName: form.clubName.trim(),
-        clubOfficials:
-          form.type === "Club"
-            ? { chairman: form.chairman, ceo: form.ceo, secretary: form.secretary, phone: form.clubPhone }
-            : undefined,
+        clubOfficials: form.type === "Club" ? form.officials.filter((o) => o.name.trim()).map((o) => ({ ...o, name: o.name.trim() })) : undefined,
+        role: PERSONNEL_TYPES.includes(form.type) ? form.role : undefined,
+        sportOther: sport === "other" ? form.sportOther.trim() : undefined,
         hasContract: form.hasContract || undefined,
         notes: form.notes,
         dob: form.type === "Player / Sportsperson" ? form.dob : undefined,
@@ -340,7 +346,7 @@ export function RegistrationFlow({
           {step === 3 && (
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Stakeholder type" required>
-                <select className={inputCls} value={form.type} onChange={(e) => set("type", e.target.value as StakeholderType)}>
+                <select className={inputCls} value={form.type} onChange={(e) => { setForm((f) => ({ ...f, type: e.target.value as StakeholderType, role: "" })); setErrors({}); }}>
                   {STAKEHOLDER_TYPES.map((t) => <option key={t}>{t}</option>)}
                 </select>
               </Field>
@@ -369,6 +375,16 @@ export function RegistrationFlow({
                 <input className={inputCls} readOnly value={federation || "Choose a sport first"} />
               </Field>
 
+              {sport === "other" && (
+                <Field label="Name of the sport" required error={errors.sportOther} className="sm:col-span-2" hint="The Registrar reviews new sports before they join the directory.">
+                  <input className={inputCls} value={form.sportOther} onChange={(e) => set("sportOther", e.target.value)} />
+                </Field>
+              )}
+
+              {PERSONNEL_TYPES.includes(form.type) && (
+                <RolePicker roles={state.roles} type={form.type} sport={sport} value={form.role} onChange={(v) => set("role", v)} error={errors.role} />
+              )}
+
               {isOrg && (
                 <Field label="Club / organisation name" required error={errors.clubName} className="sm:col-span-2" hint="Names are checked for uniqueness before approval.">
                   <input className={inputCls} value={form.clubName} onChange={(e) => set("clubName", e.target.value)} />
@@ -376,21 +392,7 @@ export function RegistrationFlow({
               )}
 
               {form.type === "Club" && (
-                <fieldset className="grid gap-4 rounded-xl border border-line bg-bone p-4 sm:col-span-2 sm:grid-cols-2">
-                  <legend className="px-2 text-[13px] font-semibold">Club leadership & key contacts</legend>
-                  <Field label="Chairman / Chairperson" required error={errors.chairman}>
-                    <input className={inputCls} value={form.chairman} onChange={(e) => set("chairman", e.target.value)} />
-                  </Field>
-                  <Field label="CEO / Chief Executive">
-                    <input className={inputCls} value={form.ceo} onChange={(e) => set("ceo", e.target.value)} />
-                  </Field>
-                  <Field label="Club Secretary" required error={errors.secretary}>
-                    <input className={inputCls} value={form.secretary} onChange={(e) => set("secretary", e.target.value)} />
-                  </Field>
-                  <Field label="Official club phone">
-                    <input className={inputCls} placeholder="+254…" value={form.clubPhone} onChange={(e) => set("clubPhone", e.target.value)} />
-                  </Field>
-                </fieldset>
+                <OfficialsEditor roles={state.roles} value={form.officials} onChange={(v) => set("officials", v)} errors={errors} />
               )}
 
               {form.type === "Player / Sportsperson" && (

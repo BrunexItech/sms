@@ -1,3 +1,4 @@
+from . import refdata as R
 from . import settings as C
 from .rbac import PII_ROLES, STAFF_ROLES, effective
 
@@ -21,7 +22,8 @@ def app_out(a, viewer=None, owner_view: bool = False) -> dict:
                   "county": a.county, "subCounty": a.sub_county, "ward": a.ward},
         "gps": {"lat": a.lat, "lon": a.lon} if a.lat is not None else None,
         "sport": a.sport, "federation": a.federation, "level": a.level, "clubName": a.club_name,
-        "clubOfficials": a.officials, "hasContract": a.has_contract, "notes": a.notes, "status": a.status,
+        "clubOfficials": R.norm_officials(a.officials) if a.officials else None, "role": a.role,
+        "roleName": (R.role_by_id().get(a.role or "") or {}).get("name"), "sportOther": a.sport_other, "hasContract": a.has_contract, "notes": a.notes, "status": a.status,
         "payment": {"status": a.pay_status, "amount": a.pay_amount, "method": a.pay_method, "ref": a.pay_ref,
                     "paidAt": a.pay_at, "receipt": a.receipt, "reconciled": a.reconciled},
         "certificateNo": a.cert_no, "createdAt": a.created_at, "updatedAt": a.updated_at,
@@ -38,6 +40,7 @@ def directory_row(a) -> dict:
     return {"id": a.id, "name": a.club_name or a.name, "type": a.type, "sport": a.sport, "level": a.level,
             "county": a.county, "countyId": a.county_id, "subCounty": a.sub_county, "ward": a.ward,
             "status": a.status, "certificateNo": a.cert_no, "clubId": a.club_id,
+            "role": (R.role_by_id().get(a.role or "") or {}).get("name"),
             "photoUrl": f"/api/media/{a.photo_id}" if a.photo_id else None}
 
 

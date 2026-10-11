@@ -131,10 +131,33 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
         err(422, "Choose a competition level.")
     if d.type in R.ORG_TYPES and len((d.club_name or "").strip()) < 3:
         err(422, "Enter the organisation name.")
+    officials = None
     if d.type == "Club":
-        o = d.club_officials or {}
-        if not str(o.get("chairman", "")).strip() or not str(o.get("secretary", "")).strip():
-            err(422, "Club chairperson and secretary are required.")
+        officials = R.norm_officials(d.club_officials)
+        roles = R.role_by_id()
+        if len(officials) > 30 or any(roles.get(x["role"], {}).get("group") != "Club leadership and administration" for x in officials):
+            err(422, "Choose club officials from the leadership roles list.")
+        named = {x["role"] for x in officials if len(x["name"]) >= 3}
+        for need in R.REQUIRED_OFFICIALS:
+            if need not in named:
+                err(422, f"Name the club's {roles[need]['name']}.")
+        for x in officials:
+            if x["phone"] and not PHONE.match(re.sub(r"\s", "", x["phone"])):
+                err(422, f"Check the phone number for {x['name']}.")
+            if x["email"] and not EMAIL.match(x["email"]):
+                err(422, f"Check the email for {x['name']}.")
+    role_id = None
+    if d.type in R.PERSONNEL_TYPES:
+        r = R.role_by_id().get(d.role or "")
+        if not r or r["type"] != d.type:
+            err(422, "Choose your role from the list.")
+        if r.get("sports") and d.sport not in r["sports"]:
+            err(422, "That role belongs to a different sport. Choose a role for your sport.")
+        role_id = r["id"]
+    elif d.type == "Player / Sportsperson":
+        role_id = "athlete-player-participant"
+    if d.sport == "other" and len((d.sport_other or "").strip()) < 3:
+        err(422, "Tell us the name of the sport. The Registrar will review it.")
     dob = gender = guardian = None
     if d.type == "Player / Sportsperson":
         try:
@@ -172,7 +195,8 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
         id=aid, owner_id=owner.id, club_id=club_id, type=d.type, name=d.name.strip(), id_no=d.id_no.strip(),
         kra=d.kra.strip().upper(), phone=d.phone.strip(), email=d.email.strip().lower(), sport=d.sport,
         federation=the_federation(db, d.sport), level=d.level, club_name=(d.club_name or "").strip(),
-        officials=d.club_officials if d.type == "Club" else None, has_contract=d.has_contract,
+        officials=officials, role=role_id, sport_other=(d.sport_other or "").strip()[:80] if d.sport == "other" else "",
+        has_contract=d.has_contract,
         notes=(d.notes or "")[:500], status="Submitted", created_at=t, updated_at=t,
         lat=d.gps.lat if d.gps else None, lon=d.gps.lon if d.gps else None, dob=dob, gender=gender, guardian=guardian,
         pay_status="Pending", pay_amount=fees(db).get(fee_type or d.type, 500),
@@ -207,7 +231,9 @@ class RegisterIn(In):
     sport: str
     level: str = "Amateur"
     club_name: str = ""
-    club_officials: dict | None = None
+    club_officials: list[dict] | dict | None = None
+    role: str | None = None
+    sport_other: str = ""
     has_contract: str | None = None
     notes: str = ""
     dob: str | None = None
@@ -387,6 +413,7 @@ def health():
 def bootstrap(facilities: int = 1, db: Session = Depends(get_db), u: User | None = Depends(optional_user)):
     out = {
         "me": user_out(u) if u else None, "fees": fees(db), "stats": stats(db), "evidence": evidence_rule(db),
+        "catalogue": {"roles": R.roles()},
         "payments": {"mpesa": C.MPESA_READY, "demoOtp": not C.PRODUCTION and not C.MPESA_READY, "demo": C.SEED_DEMO},
         "federations": [federation_out(f) for f in db.scalars(select(Federation).order_by(Federation.sport_name)).all()],
         "events": [event_out(e) for e in db.scalars(select(Event).where(Event.status == "Approved").order_by(Event.date)).all()],
@@ -571,7 +598,8 @@ def club_pay(d: ClubPayIn, db: Session = Depends(get_db), u: User = Depends(need
 # ───────────── directory (restricted) ─────────────
 TABS = {"players": ["Player / Sportsperson"],
         "clubs": ["Club", "Academy", "Sports Business", "Facility Operator", "Event Organiser", "Federation / Association"],
-        "teams": ["Technical Team", "Coach"], "scouts": ["Scout", "Sports Agent / Manager"]}
+        "teams": ["Technical Team", "Coach"], "scouts": ["Scout", "Sports Agent / Manager"],
+        "officials": ["Match / Competition Official"], "support": ["Health & Welfare Staff", "Operations & Admin Staff"]}
 
 
 @router.get("/directory")

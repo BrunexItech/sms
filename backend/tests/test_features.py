@@ -1,3 +1,4 @@
+import re
 import itertools
 from datetime import date, timedelta
 
@@ -244,3 +245,85 @@ def test_staff_and_applicant_entrances_are_separate(client_factory):
     r = d.post("/api/auth/login", json={"identifier": "player@example.co.ke", "password": PW, "audience": "staff"})
     assert r.status_code == 401 and r.json()["detail"] == "Incorrect email/phone or password."
     assert d.post("/api/auth/login", json={"identifier": "player@example.co.ke", "password": PW, "audience": "member"}).status_code == 200
+
+
+OFFICIALS = [
+    {"role": "chairperson-president", "name": "Chair Person"}, {"role": "secretary-general-secretary", "name": "Sec Retary"},
+    {"role": "treasurer-finance-officer", "name": "Tre Asurer"}, {"role": "chief-executive-officer-ceo", "name": "Chief Exec"},
+]
+
+
+def test_catalogue_matches_the_document(anon):
+    boot = anon.get("/api/bootstrap?facilities=0").json()
+    roles = boot["catalogue"]["roles"]
+    assert len(roles) == 155
+    groups = {r["group"] for r in roles}
+    assert {"Club leadership and administration", "Teams and coaching", "Officials and competitions",
+            "Health, welfare and integrity", "Operations and communications", "Athletics roles", "Esports roles"} <= groups
+    assert any(r["name"] == "Treasurer/Finance Officer" for r in roles)
+    feds = {f["sportId"]: f for f in boot["federations"]}
+    assert len(feds) >= 49 and feds["squash"]["name"] == "Kenya Squash Rackets Association"
+    assert feds["netball"]["name"] == "Kenya Netball Association"  # document's wording, not the earlier brief's
+    assert feds["special-olympics"]["name"] == "Special Olympics Kenya" and "other" in feds
+    assert all(f["status"] == "To be confirmed" for f in feds.values())  # nothing claimed as verified
+
+
+def test_club_officials_and_personnel_roles(client_factory):
+    c = client_factory()
+    base = dict(type="Club", clubName="Treasury Test FC", sport="football")
+    # treasurer is required, as are chairperson and secretary
+    no_treasurer = [o for o in OFFICIALS if o["role"] != "treasurer-finance-officer"]
+    assert c.post("/api/registrations", json=body(**base, clubOfficials=no_treasurer)).status_code == 422
+    assert c.post("/api/registrations", json=body(**base, clubOfficials=OFFICIALS + [{"role": "head-coach", "name": "Not Leadership"}])).status_code == 422
+    r = c.post("/api/registrations", json=body(**base, clubOfficials=OFFICIALS + [{"role": "vice-chairperson-vice-president", "name": "Vice Chair", "phone": "0712000009"}]))
+    assert r.status_code == 201, r.text
+    assert [o["role"] for o in r.json()["application"]["clubOfficials"]][:2] == ["chairperson-president", "secretary-general-secretary"]
+
+    d = client_factory()
+    person = dict(dob="1990-01-01", gender="Male")
+    # a coach must pick a role of the matching type
+    assert d.post("/api/registrations", json=body(type="Coach", **person)).status_code == 422
+    assert d.post("/api/registrations", json=body(type="Coach", role="team-doctor", **person)).status_code == 422
+    ok = d.post("/api/registrations", json=body(type="Coach", role="head-coach", **person))
+    assert ok.status_code == 201 and ok.json()["application"]["roleName"] == "Head Coach"
+    # sport-specific roles only fit their sport
+    e = client_factory()
+    assert e.post("/api/registrations", json=body(type="Coach", role="sprints-coach", sport="football", **person)).status_code == 422
+    assert e.post("/api/registrations", json=body(type="Coach", role="sprints-coach", sport="athletics", **person)).status_code == 201
+    # officials, health and operations are separate registrations in the same system
+    for typ, role in [("Match / Competition Official", "referee"), ("Health & Welfare Staff", "physiotherapist"),
+                      ("Operations & Admin Staff", "media-and-communications-officer")]:
+        assert client_factory().post("/api/registrations", json=body(type=typ, role=role, **person)).status_code == 201, typ
+    # "other" sport needs a name for the Registrar to review
+    f = client_factory()
+    assert f.post("/api/registrations", json=body(sport="other")).status_code == 422
+    g = f.post("/api/registrations", json=body(sport="other", sportOther="Mbao (traditional board game)"))
+    assert g.status_code == 201 and g.json()["application"]["sportOther"].startswith("Mbao")
+
+
+def test_catalogue_sync_updates_untouched_rows_only(client_factory, staff):
+    from app.models import Federation
+    from app.seed import sync_catalogue
+    with SessionLocal() as db:
+        db.get(Federation, "judo").name = "Kenya Judo Federation"          # an old, unedited name
+        db.get(Federation, "karate").name = "Registrar's confirmed name"   # edited by a person
+        db.get(Federation, "karate").status = "Recognised"
+        db.get(Federation, "squash").status = "Recognised"
+        db.commit()
+        sync_catalogue(db)
+        assert db.get(Federation, "judo").name == "Kenya Judo Association"
+        assert db.get(Federation, "karate").name == "Registrar's confirmed name"
+        db.delete(db.get(Federation, "triathlon"))
+        db.commit()
+        sync_catalogue(db)
+        assert db.get(Federation, "triathlon") is not None and db.get(Federation, "squash").status == "Recognised"
+
+
+def test_frontend_and_backend_sport_catalogues_match():
+    """src/data/sports.ts and app/refdata.py must list the same sports, or pickers and validation drift apart."""
+    import pathlib
+    ts = (pathlib.Path(__file__).resolve().parents[2] / "src" / "data" / "sports.ts").read_text()
+    front = set(re.findall(r'^\s*s\("([a-z0-9-]+)"', ts, flags=re.M))
+    assert front == R.SPORT_IDS, (front ^ R.SPORT_IDS)
+    imgs = pathlib.Path(__file__).resolve().parents[2] / "public" / "sports"
+    assert all((imgs / f"{i}.jpg").exists() for i in front), [i for i in front if not (imgs / f"{i}.jpg").exists()]

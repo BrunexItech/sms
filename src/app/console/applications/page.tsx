@@ -156,7 +156,8 @@ function Row({ k, v }: { k: string; v?: string }) {
 }
 
 function Detail({ app }: { app: Application }) {
-  const { can, setStatus, user, requestVideo, cancelVideoRequest } = useStore();
+  const { can, setStatus, user, requestVideo, cancelVideoRequest, state } = useStore();
+  const roles = state.roles;
   const [reqNote, setReqNote] = useState("");
   const mayRequest = can("applications.review") || can("applications.endorse") || can("applications.decide");
   // Data minimisation: federations see membership facts, not personal identifiers.
@@ -201,7 +202,8 @@ function Detail({ app }: { app: Application }) {
 
       <dl className="grid grid-cols-2 gap-4">
         <Row k="Applicant" v={app.name} />
-        <Row k="Sport" v={SPORT_BY_ID[app.sport]?.name} />
+        <Row k="Sport" v={app.sport === "other" && app.sportOther ? `Other: ${app.sportOther}` : SPORT_BY_ID[app.sport]?.name} />
+        {app.roleName && <Row k="Role" v={app.roleName} />}
         <Row k="Federation" v={app.federation} />
         <Row k="Level" v={app.level} />
         <Row k="Location" v={formatPlace(app.place)} />
@@ -218,15 +220,17 @@ function Detail({ app }: { app: Application }) {
         {app.payment.status === "Paid" && <Row k="Receipt" v={`${app.payment.receipt} · ${app.payment.method}`} />}
       </dl>
 
-      {app.clubOfficials && (
+      {app.clubOfficials && app.clubOfficials.length > 0 && (
         <div className="rounded-xl border border-line bg-bone/60 p-4">
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-3">Club leadership</p>
-          <dl className="grid grid-cols-2 gap-3">
-            <Row k="Chairperson" v={app.clubOfficials.chairman} />
-            <Row k="CEO" v={app.clubOfficials.ceo} />
-            <Row k="Secretary" v={app.clubOfficials.secretary} />
-            <Row k="Club phone" v={app.clubOfficials.phone} />
-          </dl>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-3">Club officials</p>
+          <ul className="divide-y divide-line">
+            {app.clubOfficials.map((o, i) => (
+              <li key={i} className="flex flex-wrap items-baseline justify-between gap-x-4 py-2 text-sm">
+                <span className="font-semibold">{o.name}</span>
+                <span className="text-ink-3">{roles.find((r) => r.id === o.role)?.name ?? o.role}{o.phone ? ` · ${o.phone}` : ""}{o.email ? ` · ${o.email}` : ""}</span>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       {app.guardian && (
