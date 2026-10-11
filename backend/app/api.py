@@ -488,7 +488,9 @@ def settle(db: Session, a: Application, who: User, method: str, ref: str):
 def check_pay(d: PayIn):
     if d.method not in PAY_METHODS:
         err(422, "Choose a payment method.")
-    if C.PRODUCTION or C.MPESA_READY:
+    if C.PRODUCTION and not C.MPESA_READY:
+        err(501, "Online payment is not open yet. Your registration is saved; you can pay from My account once it opens.")
+    if C.MPESA_READY:
         err(400, "Pay with M-Pesa: this deployment uses live payment confirmation.")
     if d.otp != DEMO_OTP:
         err(422, "The one-time password is incorrect.")

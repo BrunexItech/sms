@@ -97,6 +97,13 @@ export function PayBox({
   if (phase === "done")
     return <p className="mt-3 flex items-center gap-2 rounded-lg bg-leaf-soft px-3.5 py-2.5 text-sm font-bold text-leaf"><Check size={16} /> Payment received.</p>;
 
+  if (!mpesa && !state.config.demoOtp)
+    return (
+      <p className="mt-3 rounded-lg border-l-4 border-gold bg-gold-soft px-3.5 py-3 text-sm text-ink-2">
+        Online payment is not open yet. Your registration is saved; you will be able to pay from <b>My account</b> as soon as it opens.
+      </p>
+    );
+
   return (
     <div className="mt-3 rounded-xl border border-line bg-bone p-3.5">
       {phase === "waiting" ? (
