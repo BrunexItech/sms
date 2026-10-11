@@ -63,6 +63,7 @@ export interface RegisterDraft {
   clubName: string;
   orgRegNo?: string;
   clubOfficials?: ClubOfficial[];
+  publicListing?: boolean;
   role?: string;
   sportOther?: string;
   hasContract?: string;
@@ -97,6 +98,7 @@ export interface PlayerDraft {
   dob?: string;
   gender?: string;
   guardian?: { name: string; phone: string; relationship: string; consent: boolean };
+  publicListing?: boolean;
 }
 
 interface Toast {

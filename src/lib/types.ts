@@ -131,6 +131,8 @@ export interface Application {
   sportOther?: string;
   /** Registrar of Societies / company / Sports Registrar certificate number (organisations). */
   orgRegNo?: string;
+  /** Player agreed (or guardian agreed) to appear on the club's public page. */
+  publicListed?: boolean;
   hasContract?: "Yes" | "No";
   notes: string;
   status: AppStatus;

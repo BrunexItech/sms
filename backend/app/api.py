@@ -205,6 +205,7 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
         federation=the_federation(db, d.sport), level=d.level, club_name=(d.club_name or "").strip(),
         officials=officials, role=role_id, sport_other=(d.sport_other or "").strip()[:80] if d.sport == "other" else "",
         org_reg_no=reg_no if d.type in R.ORG_TYPES else "",
+        public_listed=bool(d.public_listing) and d.type == "Player / Sportsperson",
         has_contract=d.has_contract,
         notes=(d.notes or "")[:500], status="Submitted", created_at=t, updated_at=t,
         lat=d.gps.lat if d.gps else None, lon=d.gps.lon if d.gps else None, dob=dob, gender=gender, guardian=guardian,
@@ -244,6 +245,7 @@ class RegisterIn(In):
     role: str | None = None
     sport_other: str = ""
     org_reg_no: str = ""
+    public_listing: bool = False
     has_contract: str | None = None
     notes: str = ""
     dob: str | None = None
@@ -262,6 +264,7 @@ class PlayerIn(In):
     level: str = "Amateur"
     has_contract: str | None = "No"
     notes: str = ""
+    public_listing: bool = False
     place: PlaceIn | None = None
     dob: str | None = None
     gender: str | None = None
@@ -580,7 +583,8 @@ def add_player(d: PlayerIn, db: Session = Depends(get_db), u: User = Depends(nee
     pd = RegisterIn(type="Player / Sportsperson", name=d.name, id_no=d.id_no, kra=d.kra, phone=d.phone, email=d.email,
                     place=d.place or PlaceIn(county_id=club.county_id, sub_id=club.sub_id, ward_id=club.ward_id),
                     sport=d.sport or club.sport, level=d.level, has_contract=d.has_contract or "No",
-                    notes=d.notes, club_name="", dob=d.dob, gender=d.gender, guardian=d.guardian)
+                    notes=d.notes, club_name="", dob=d.dob, gender=d.gender, guardian=d.guardian,
+                    public_listing=d.public_listing)
     a = new_app(db, pd, u, place, f"Club: {club.club_name or club.name}", club_id=club.id, fee_type="Player / Sportsperson")
     log(db, u, f"Registered player for {club.club_name or club.name}", a.id)
     db.commit()
@@ -618,6 +622,23 @@ def public_clubs(q: str = "", county: str = "", sport: str = "", db: Session = D
            for a in rows if (not county or a.county_id == county) and (not sport or a.sport == sport)
            and (not needle or needle in f"{a.club_name} {a.name} {a.county} {a.sub_county} {a.ward} {a.sport}".lower())]
     return {"rows": out[:500], "total": len(out)}
+
+
+@router.get("/clubs/{cid}")
+def public_club(cid: str, db: Session = Depends(get_db)):
+    """One verified club and the players who agreed to be listed (name, role and sport only)."""
+    c = db.get(Application, cid)
+    if not c or c.type not in TABS["clubs"] or c.status != "Approved":
+        err(404, "Club not found.")
+    roster = db.scalars(select(Application).where(
+        Application.club_id == c.id, Application.status == "Approved", Application.public_listed.is_(True))
+        .order_by(Application.name)).all()
+    roles = R.role_by_id()
+    return {"club": {"id": c.id, "name": c.club_name or c.name, "type": c.type, "sport": c.sport, "level": c.level,
+                     "federation": c.federation, "county": c.county, "subCounty": c.sub_county, "ward": c.ward,
+                     "certificateNo": c.cert_no},
+            "players": [{"name": p.name, "role": (roles.get(p.role or "") or {}).get("name") or "Athlete/Player",
+                         "sport": p.sport} for p in roster]}
 
 
 # ───────────── directory (restricted) ─────────────

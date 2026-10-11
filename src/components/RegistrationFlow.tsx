@@ -68,6 +68,7 @@ interface Form {
   gPhone: string;
   gRel: string;
   gConsent: boolean;
+  publicListing: boolean;
   website: string;
 }
 
@@ -175,6 +176,7 @@ export function RegistrationFlow({
     gPhone: "",
     gRel: "",
     gConsent: false,
+    publicListing: false,
     website: "",
   });
 
@@ -225,6 +227,7 @@ export function RegistrationFlow({
         sportOther: sport === "other" ? form.sportOther.trim() : undefined,
         hasContract: form.hasContract || undefined,
         notes: form.notes,
+        publicListing: form.type === "Player / Sportsperson" ? form.publicListing : undefined,
         dob: form.type === "Player / Sportsperson" ? form.dob : undefined,
         gender: form.type === "Player / Sportsperson" ? form.gender : undefined,
         guardian: minor ? { name: form.gName.trim(), phone: form.gPhone.trim(), relationship: form.gRel.trim(), consent: true } : undefined,
@@ -456,6 +459,16 @@ export function RegistrationFlow({
                     </div>
                   )}
                 </fieldset>
+              )}
+
+              {form.type === "Player / Sportsperson" && (
+                <label className="flex items-start gap-2.5 rounded-xl border border-line bg-bone p-3.5 text-[13px] sm:col-span-2">
+                  <input type="checkbox" className="mt-0.5 h-4 w-4 accent-forest-700" checked={form.publicListing} onChange={(e) => set("publicListing", e.target.checked)} />
+                  <span>
+                    Show my name, role and sport on my club&apos;s public page once I am verified.
+                    {form.dob && ageOf(form.dob) < 18 && " For a player under 18, the parent or guardian agrees to this."} You can change this later. Nothing else is shown.
+                  </span>
+                </label>
               )}
 
               {form.type === "Player / Sportsperson" && (

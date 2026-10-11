@@ -78,6 +78,7 @@ class Application(Base):
     photo_id: Mapped[str | None] = mapped_column(String, nullable=True)
     media_request: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     role: Mapped[str | None] = mapped_column(String, nullable=True)  # role catalogue id
+    public_listed: Mapped[bool] = mapped_column(Boolean, default=False)  # shown on the club's public page
     org_reg_no: Mapped[str] = mapped_column(String, default="")  # society / company / registrar certificate number
     sport_other: Mapped[str] = mapped_column(String, default="")  # name given when the sport is "other"
     dob: Mapped[str | None] = mapped_column(String, nullable=True)

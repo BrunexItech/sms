@@ -23,7 +23,7 @@ def app_out(a, viewer=None, owner_view: bool = False) -> dict:
         "gps": {"lat": a.lat, "lon": a.lon} if a.lat is not None else None,
         "sport": a.sport, "federation": a.federation, "level": a.level, "clubName": a.club_name,
         "clubOfficials": R.norm_officials(a.officials) if a.officials else None, "role": a.role,
-        "roleName": (R.role_by_id().get(a.role or "") or {}).get("name"), "sportOther": a.sport_other, "orgRegNo": a.org_reg_no, "hasContract": a.has_contract, "notes": a.notes, "status": a.status,
+        "roleName": (R.role_by_id().get(a.role or "") or {}).get("name"), "sportOther": a.sport_other, "orgRegNo": a.org_reg_no, "publicListed": bool(a.public_listed), "hasContract": a.has_contract, "notes": a.notes, "status": a.status,
         "payment": {"status": a.pay_status, "amount": a.pay_amount, "method": a.pay_method, "ref": a.pay_ref,
                     "paidAt": a.pay_at, "receipt": a.receipt, "reconciled": a.reconciled},
         "certificateNo": a.cert_no, "createdAt": a.created_at, "updatedAt": a.updated_at,

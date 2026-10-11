@@ -161,6 +161,21 @@ def own_app(db: Session, u: User, aid: str) -> Application:
     return a
 
 
+class ListingIn(In):
+    listed: bool
+
+
+@router.post("/applications/{aid}/listing")
+def set_listing(aid: str, d: ListingIn, db: Session = Depends(get_db), u: User = Depends(need_user)):
+    a = own_app(db, u, aid)
+    if a.type != "Player / Sportsperson":
+        err(422, "Only players can be listed on a club page.")
+    a.public_listed = d.listed
+    a.history = [*a.history, hist(u, "Public listing " + ("on" if d.listed else "off"))]
+    db.commit()
+    return {"application": app_out(a, u, owner_view=True)}
+
+
 @router.post("/applications/{aid}/renew")
 def renew(aid: str, db: Session = Depends(get_db), u: User = Depends(need_user)):
     a = own_app(db, u, aid)

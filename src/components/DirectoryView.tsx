@@ -79,7 +79,7 @@ export function DirectoryView({ initialTab = "players", scope = "staff" }: { ini
               status: x.status,
               extra: x.certificateNo ?? "",
               affiliation: x.affiliation ?? "",
-              href: x.certificateNo ? `/verify?no=${encodeURIComponent(x.certificateNo)}` : "",
+              href: publicClubs ? `/clubs/${x.id}` : x.certificateNo ? `/verify?no=${encodeURIComponent(x.certificateNo)}` : "",
             })),
           });
         })

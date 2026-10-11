@@ -363,3 +363,32 @@ def test_organisation_registration_number_and_contact_person(client_factory):
     # a player is not asked for one and it is not stored
     p = client_factory().post("/api/registrations", json=body())
     assert p.status_code == 201 and p.json()["application"]["orgRegNo"] == ""
+
+
+def test_club_page_lists_only_opted_in_verified_players(client_factory, staff):
+    reg = staff("registrar@sports.example.ke")
+    c = client_factory()
+    r = c.post("/api/registrations", json=body(type="Club", clubName="Roster Page FC", sport="football", clubOfficials=OFFICIALS))
+    cid = r.json()["application"]["id"]
+    pay(c, cid)
+    assert c.post(f"/api/applications/{cid}/media", data={"kind": "document", "title": "Constitution"},
+                  files={"file": ("c.pdf", b"%PDF-1.4\n" + b"0" * 64, "application/pdf")}).status_code == 201
+    assert reg.post(f"/api/applications/{cid}/transition", json={"action": "review"}).status_code == 200
+    assert reg.post(f"/api/applications/{cid}/transition", json={"action": "approve"}).status_code == 200
+    anon = client_factory()
+    assert anon.get(f"/api/clubs/{cid}").status_code == 200
+    shown = c.post("/api/club/players", json={"name": "Listed Player One", "idNo": "31000001", "level": "Amateur",
+                                              "dob": "1999-01-01", "gender": "Male", "publicListing": True}).json()["application"]
+    hidden = c.post("/api/club/players", json={"name": "Hidden Player Two", "idNo": "31000002", "level": "Amateur",
+                                               "dob": "1999-01-01", "gender": "Male"}).json()["application"]
+    for p in (shown, hidden):
+        pay(c, p["id"])
+        reg.post(f"/api/applications/{p['id']}/transition", json={"action": "review"})
+        reg.post(f"/api/applications/{p['id']}/transition", json={"action": "approve"})
+    page = anon.get(f"/api/clubs/{cid}").json()
+    names = [p["name"] for p in page["players"]]
+    assert "Listed Player One" in names and "Hidden Player Two" not in names
+    assert not {"idNo", "phone", "dob"} & set(page["players"][0])
+    assert c.post(f"/api/applications/{hidden['id']}/listing", json={"listed": True}).status_code == 200
+    assert "Hidden Player Two" in [p["name"] for p in anon.get(f"/api/clubs/{cid}").json()["players"]]
+    assert anon.get("/api/clubs/NSMP-2026-000000").status_code == 404

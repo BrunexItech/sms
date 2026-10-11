@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Camera, Download, FileText, LogOut, Plus, RefreshCw, Search, Users } from "lucide-react";
 import { SPORT_BY_ID } from "@/data/sports";
 import { formatPlace } from "@/lib/admin";
+import { api } from "@/lib/api";
 import { errText, useStore } from "@/lib/store";
 import type { Application } from "@/lib/types";
 import { DocumentsPanel } from "./DocumentsPanel";
@@ -197,12 +198,20 @@ function RegistrationCard({ a }: { a: Application }) {
 
 function ClubPortal() {
   const [nowMs] = useState(() => Date.now());
-  const { state, addClubPlayer, notify } = useStore();
+  const { state, addClubPlayer, notify, refresh } = useStore();
   const club = state.club!;
+  const toggleListing = async (a: Application) => {
+    try {
+      await api(`/applications/${a.id}/listing`, "POST", { listed: !a.publicListed });
+      await refresh();
+    } catch (x) {
+      notify(errText(x), "error");
+    }
+  };
   const roster = useMemo(() => state.applications.filter((a) => a.clubId === club.id), [state.applications, club.id]);
   const pending = roster.filter((a) => a.payment.status === "Pending");
   const [q, setQ] = useState("");
-  const [form, setForm] = useState({ name: "", idNo: "", phone: "", kra: "", level: "Amateur", sport: club.sport, dob: "", gender: "", gName: "", gPhone: "", gRel: "", gConsent: false });
+  const [form, setForm] = useState({ name: "", idNo: "", phone: "", kra: "", level: "Amateur", sport: club.sport, dob: "", gender: "", gName: "", gPhone: "", gRel: "", gConsent: false, listed: false });
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [paying, setPaying] = useState(false);
@@ -218,7 +227,7 @@ function ClubPortal() {
       const young = form.dob && nowMs - new Date(form.dob).getTime() < 18 * 365.25 * 86_400_000;
       const p = await addClubPlayer({
         name: form.name, idNo: form.idNo, phone: form.phone, kra: form.kra, level: form.level, sport: form.sport, hasContract: "No",
-        dob: form.dob, gender: form.gender,
+        dob: form.dob, gender: form.gender, publicListing: form.listed,
         guardian: young ? { name: form.gName, phone: form.gPhone, relationship: form.gRel, consent: form.gConsent } : undefined,
       });
       notify(`${p.name} added. Pay the registration fee to send them for verification.`);
@@ -266,6 +275,10 @@ function ClubPortal() {
             </label>
           </div>
         )}
+        <label className="flex items-start gap-2.5 text-[13px] sm:col-span-2 lg:col-span-4">
+          <input type="checkbox" className="mt-0.5 h-4 w-4 accent-forest-700" checked={form.listed} onChange={(e) => setForm({ ...form, listed: e.target.checked })} />
+          <span>List this player on our public club page once verified (name, role and sport only). For under-18s, the guardian agrees to this.</span>
+        </label>
         <Field label="Sport">
           <select className={inputCls} value={form.sport} onChange={(e) => setForm({ ...form, sport: e.target.value })}>
             {Object.values(SPORT_BY_ID).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -304,7 +317,7 @@ function ClubPortal() {
           <thead>
             <tr className="border-b border-line text-xs uppercase tracking-wider text-ink-3">
               <th className="py-2.5 pr-3 font-semibold">Player</th><th className="py-2.5 pr-3 font-semibold">ID</th>
-              <th className="py-2.5 pr-3 font-semibold">Sport</th><th className="py-2.5 pr-3 font-semibold">Payment</th><th className="py-2.5 pr-3 font-semibold">Verification</th><th className="py-2.5 font-semibold">Media</th>
+              <th className="py-2.5 pr-3 font-semibold">Sport</th><th className="py-2.5 pr-3 font-semibold">Payment</th><th className="py-2.5 pr-3 font-semibold">Verification</th><th className="py-2.5 pr-3 font-semibold">Public page</th><th className="py-2.5 font-semibold">Media</th>
             </tr>
           </thead>
           <tbody>
@@ -315,6 +328,11 @@ function ClubPortal() {
                 <td className="py-3 pr-3 text-ink-2">{SPORT_BY_ID[a.sport]?.name}</td>
                 <td className="py-3 pr-3"><Pill>{a.payment.status}</Pill></td>
                 <td className="py-3 pr-3"><Pill>{a.status}</Pill></td>
+                <td className="py-3 pr-3">
+                  <button onClick={() => toggleListing(a)} aria-pressed={!!a.publicListed} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${a.publicListed ? "border-leaf bg-leaf/10 text-leaf" : "border-line text-ink-3 hover:bg-bone"}`}>
+                    {a.publicListed ? "Listed" : "Not listed"}
+                  </button>
+                </td>
                 <td className="py-3">
                   <button onClick={() => setMediaFor(mediaFor === a.id ? null : a.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-forest-800 hover:bg-bone">
                     <Camera size={13} /> {mediaFor === a.id ? "Close" : a.mediaRequest && !a.mediaRequest.fulfilledAt ? "Video requested" : "Photos & videos"}
@@ -322,7 +340,7 @@ function ClubPortal() {
                 </td>
               </tr>
             ))}
-            {shown.length === 0 && <tr><td colSpan={6} className="py-10 text-center text-ink-3">{roster.length ? "No player matches your search." : "No players yet. Add your first player above."}</td></tr>}
+            {shown.length === 0 && <tr><td colSpan={7} className="py-10 text-center text-ink-3">{roster.length ? "No player matches your search." : "No players yet. Add your first player above."}</td></tr>}
           </tbody>
         </table>
       </div>
