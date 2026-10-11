@@ -213,7 +213,7 @@ export function RegistrationFlow({
         level: form.level,
         clubName: form.clubName.trim(),
         clubOfficials: form.type === "Club" ? form.officials.filter((o) => o.name.trim()).map((o) => ({ ...o, name: o.name.trim() })) : undefined,
-        role: PERSONNEL_TYPES.includes(form.type) ? form.role : undefined,
+        role: PERSONNEL_TYPES.includes(form.type) || form.type === "Player / Sportsperson" ? form.role || undefined : undefined,
         sportOther: sport === "other" ? form.sportOther.trim() : undefined,
         hasContract: form.hasContract || undefined,
         notes: form.notes,
@@ -393,8 +393,9 @@ export function RegistrationFlow({
                 </Field>
               )}
 
-              {PERSONNEL_TYPES.includes(form.type) && (
-                <RolePicker roles={state.roles} type={form.type} sport={sport} value={form.role} onChange={(v) => set("role", v)} error={errors.role} />
+              {(PERSONNEL_TYPES.includes(form.type) || form.type === "Player / Sportsperson") && (
+                <RolePicker roles={state.roles} type={form.type} sport={sport} value={form.role} onChange={(v) => set("role", v)} error={errors.role}
+                  optional={form.type === "Player / Sportsperson"} />
               )}
 
               {isOrg && (

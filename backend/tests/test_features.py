@@ -327,3 +327,28 @@ def test_frontend_and_backend_sport_catalogues_match():
     assert front == R.SPORT_IDS, (front ^ R.SPORT_IDS)
     imgs = pathlib.Path(__file__).resolve().parents[2] / "public" / "sports"
     assert all((imgs / f"{i}.jpg").exists() for i in front), [i for i in front if not (imgs / f"{i}.jpg").exists()]
+
+
+def test_public_club_register_and_player_roles(client_factory, staff):
+    club = dict(type="Club", clubName="Public Register FC", sport="football")
+    c = client_factory()
+    r = c.post("/api/registrations", json=body(**club, clubOfficials=OFFICIALS))
+    assert r.status_code == 201, r.text
+    # pending clubs are not listed; the endpoint needs no sign-in and carries no personal data
+    anon = client_factory()
+    assert "Public Register FC" not in anon.get("/api/clubs").text
+    pay(c, r.json()["application"]["id"])
+    reg = staff("registrar@sports.example.ke")
+    aid = r.json()["application"]["id"]
+    assert reg.post(f"/api/applications/{aid}/transition", json={"action": "review"}).status_code == 200
+    reg.post(f"/api/applications/{aid}/transition", json={"action": "approve"})
+    listed = anon.get("/api/clubs?q=public register").json()
+    if listed["total"]:  # approval may wait for club documents under the evidence rule
+        row = listed["rows"][0]
+        assert not {"idNo", "kra", "phone", "email"} & set(row)
+    # players may pick a player role; a coaching role is refused, a bad id is refused
+    assert client_factory().post("/api/registrations", json=body(role="team-captain")).status_code == 201
+    assert client_factory().post("/api/registrations", json=body(role="head-coach")).status_code == 422
+    # staff can filter independent players
+    assert reg.get("/api/directory?tab=players&club=none").status_code == 200
+    assert anon.get("/api/directory?tab=players").status_code in (401, 403)

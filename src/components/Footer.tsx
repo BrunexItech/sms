@@ -34,6 +34,7 @@ export function Footer() {
           <ul className="mt-5 space-y-3 text-sm text-white/75">
             {[
               ["Register", "/register"],
+              ["Clubs", "/clubs"],
               ["Facilities map", "/facilities"],
               ["Events", "/events"],
               ["Verify a certificate", "/verify"],

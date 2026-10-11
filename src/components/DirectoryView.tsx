@@ -33,6 +33,7 @@ interface Row {
   status: string;
   extra: string;
   href: string;
+  affiliation: string;
 }
 
 export function DirectoryView({ initialTab = "players" }: { initialTab?: DirectoryTab }) {
@@ -42,12 +43,15 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
   const [q, setQ] = useState(qs.get("q") ?? "");
   const [county, setCounty] = useState("");
   const [sport, setSport] = useState("");
+  const [affil, setAffil] = useState("");
   const [page, setPage] = useState(0);
   const [people, setPeople] = useState<{ rows: Row[]; total: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
 
-  const allowed = tab === "facilities" || (!!me && (me.staff ? can("directory.view") : !!state.club));
+  // Clubs and facilities are public; every other register is restricted.
+  const staffView = !!me?.staff && can("directory.view");
+  const allowed = tab === "facilities" || tab === "clubs" || (!!me && (me.staff ? can("directory.view") : !!state.club));
   const reason = !me
     ? "The register of registered people and clubs is not public."
     : me.staff
@@ -57,11 +61,12 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
   // Load people from the server (scoped to what this account may see), debounced for typing.
   useEffect(() => {
     if (tab === "facilities" || !allowed) return;
+    const publicClubs = tab === "clubs" && !staffView;
     let cancelled = false;
     const t = setTimeout(() => {
       setLoading(true);
-      const p = new URLSearchParams({ tab, q, county, sport });
-      api<{ rows: { id: string; name: string; type: string; role?: string | null; sport: string; county: string; subCounty: string; ward: string; status: string; certificateNo: string | null }[]; total: number }>(`/directory?${p}`)
+      const p = new URLSearchParams({ tab, q, county, sport, club: affil });
+      api<{ rows: { affiliation?: string; id: string; name: string; type: string; role?: string | null; sport: string; county: string; subCounty: string; ward: string; status: string; certificateNo: string | null }[]; total: number }>(publicClubs ? `/clubs?${p}` : `/directory?${p}`)
         .then((r) => {
           if (cancelled) return;
           setErr("");
@@ -75,6 +80,7 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
               place: [x.ward, x.subCounty, x.county].filter(Boolean).join(", "),
               status: x.status,
               extra: x.certificateNo ?? "",
+              affiliation: x.affiliation ?? "",
               href: x.certificateNo ? `/verify?no=${encodeURIComponent(x.certificateNo)}` : "",
             })),
           });
@@ -86,7 +92,7 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
       cancelled = true;
       clearTimeout(t);
     };
-  }, [tab, q, county, sport, allowed]);
+  }, [tab, q, county, sport, affil, allowed, staffView]);
 
   const facilityRows: Row[] = useMemo(() => {
     if (tab !== "facilities") return [];
@@ -97,7 +103,7 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
       .map((f) => ({
         key: f.id, name: f.name, kind: f.type,
         sport: f.sports.map((s) => SPORT_BY_ID[s]?.name).filter(Boolean).join(", ") || "—",
-        place: formatPlace(f.place), status: f.status === "Verified" ? "Verified" : "Unverified", extra: f.id,
+        place: formatPlace(f.place), status: f.status === "Verified" ? "Verified" : "Unverified", extra: f.id, affiliation: "",
         href: `/facilities?focus=${encodeURIComponent(f.id)}`,
       }));
   }, [tab, q, county, sport, state.facilities]);
@@ -117,11 +123,11 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
           {(Object.keys(LABEL) as DirectoryTab[]).map((t) => (
             <button
               key={t}
-              onClick={() => reset(() => { setTab(t); setPeople(null); })}
+              onClick={() => reset(() => { setTab(t); setPeople(null); setAffil(""); })}
               aria-pressed={tab === t}
               className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-bold transition ${tab === t ? "bg-forest-800 text-white" : "bg-bone text-ink-2 hover:bg-forest-100"}`}
             >
-              {t !== "facilities" && !(me && (me.staff ? can("directory.view") : state.club)) && <Lock size={13} />}
+              {t !== "facilities" && t !== "clubs" && !(me && (me.staff ? can("directory.view") : state.club)) && <Lock size={13} />}
               {LABEL[t]}
             </button>
           ))}
@@ -133,7 +139,7 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
             <h2 className="mt-4 text-xl font-extrabold text-forest-900">Restricted register</h2>
             <p className="mt-2 text-sm text-ink-2">{reason}</p>
             <p className="mt-1 text-sm text-ink-3">
-              Players and clubs register on the public site and are verified before they appear. Facilities, events and certificate verification are public.
+              Individuals register on the public site and are verified before they are recorded. Clubs, facilities, events and certificate verification are public.
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-3">
               {!me && <Link href="/login" className="rounded-lg bg-forest-800 px-5 py-2.5 text-sm font-bold text-white">Sign in</Link>}
@@ -144,7 +150,7 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
           </div>
         ) : (
           <>
-            <div className="mt-5 grid gap-3 md:grid-cols-[1fr_220px_200px]">
+            <div className={`mt-5 grid gap-3 ${tab === "players" && staffView ? "md:grid-cols-[1fr_200px_200px_200px]" : "md:grid-cols-[1fr_220px_200px]"}`}>
               <div className="relative">
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3" />
                 <input className={`${inputCls} pl-10`} placeholder="Search names, clubs, sports, places…" value={q} onChange={(e) => reset(() => setQ(e.target.value))} />
@@ -157,6 +163,13 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
                 <option value="">Any sport</option>
                 {SPORTS.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
+              {tab === "players" && staffView && (
+                <select className={inputCls} value={affil} onChange={(e) => reset(() => setAffil(e.target.value))} aria-label="Club affiliation">
+                  <option value="">Club and independent</option>
+                  <option value="any">With a club</option>
+                  <option value="none">Independent (no club)</option>
+                </select>
+              )}
             </div>
 
             {err && <p role="alert" className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-semibold text-kenya-red-deep">{err}</p>}
@@ -167,7 +180,8 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
                 <table className="w-full min-w-[720px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-line text-xs uppercase tracking-wider text-ink-3">
-                      <th className="py-3 pr-4 font-semibold">Name</th><th className="py-3 pr-4 font-semibold">Type</th>
+                      <th className="py-3 pr-4 font-semibold">Name</th><th className="py-3 pr-4 font-semibold">{tab === "players" ? "Role" : "Type"}</th>
+                      {tab === "players" && <th className="py-3 pr-4 font-semibold">Club</th>}
                       <th className="py-3 pr-4 font-semibold">Sport</th><th className="py-3 pr-4 font-semibold">Location</th>
                       <th className="py-3 pr-4 font-semibold">Status</th><th className="py-3 font-semibold">{tab === "facilities" ? "ID" : "Certificate"}</th>
                     </tr>
@@ -177,6 +191,7 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
                       <tr key={r.key} className="border-b border-line/70 transition hover:bg-bone/70">
                         <td className="py-3.5 pr-4 font-semibold">{r.href ? <Link href={r.href} className="hover:text-forest-700 hover:underline">{r.name}</Link> : r.name}</td>
                         <td className="py-3.5 pr-4 text-ink-2">{r.kind}</td>
+                        {tab === "players" && <td className="py-3.5 pr-4 text-ink-2">{r.affiliation}</td>}
                         <td className="py-3.5 pr-4 text-ink-2">{r.sport}</td>
                         <td className="py-3.5 pr-4 text-ink-2">{r.place}</td>
                         <td className="py-3.5 pr-4"><Pill>{r.status}</Pill></td>
@@ -184,7 +199,7 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
                       </tr>
                     ))}
                     {view.length === 0 && (
-                      <tr><td colSpan={6} className="py-14 text-center text-ink-3"><MapPin className="mx-auto mb-2" size={22} />No matching records.</td></tr>
+                      <tr><td colSpan={7} className="py-14 text-center text-ink-3"><MapPin className="mx-auto mb-2" size={22} />No matching records.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -193,7 +208,7 @@ export function DirectoryView({ initialTab = "players" }: { initialTab?: Directo
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-ink-2">
               <p className="flex items-center gap-2 text-xs text-ink-3">
-                <ShieldCheck size={14} /> {tab === "facilities" ? "Public register." : "Restricted to your scope. ID, KRA PIN, phone and email are never shown here."}
+                <ShieldCheck size={14} /> {tab === "facilities" || (tab === "clubs" && !staffView) ? "Public register of verified organisations. No personal data or rosters are shown." : "Restricted to your scope. ID, KRA PIN, phone and email are never shown here."}
               </p>
               <div className="flex items-center gap-2">
                 <span>{rows.length === 0 ? 0 : page * PAGE + 1}–{Math.min(rows.length, page * PAGE + PAGE)} of {rows.length.toLocaleString()}</span>

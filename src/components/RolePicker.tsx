@@ -13,6 +13,7 @@ export function RolePicker({
   value,
   onChange,
   error,
+  optional,
 }: {
   roles: RoleItem[];
   type: string;
@@ -20,6 +21,7 @@ export function RolePicker({
   value: string;
   onChange: (id: string) => void;
   error?: string;
+  optional?: boolean;
 }) {
   const [q, setQ] = useState("");
   const usable = useMemo(() => roles.filter((r) => r.type === type && (!r.sports || r.sports.length === 0 || r.sports.includes(sport))), [roles, type, sport]);
@@ -28,12 +30,13 @@ export function RolePicker({
   const hiddenSpecific = roles.filter((r) => r.type === type && r.sports && r.sports.length && !r.sports.includes(sport)).length;
 
   return (
-    <Field label="Your role" required error={error} className="sm:col-span-2" hint={hiddenSpecific && !sport ? "Choose a sport first to also see sport-specific roles." : undefined}>
+    <Field label={optional ? "Your role (optional)" : "Your role"} required={!optional} error={error} className="sm:col-span-2" hint={optional ? "Leave unselected if you simply play; you are then recorded as Athlete/Player." : hiddenSpecific && !sport ? "Choose a sport first to also see sport-specific roles." : undefined}>
       <div className="relative mb-2">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
         <input className={`${inputCls} py-2.5 pl-9`} placeholder="Search roles…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search roles" />
       </div>
       <select className={inputCls} value={value} onChange={(e) => onChange(e.target.value)} size={Math.min(8, Math.max(3, shown.length + groups.length))}>
+        {optional && <option value="">Athlete / Player (default)</option>}
         {shown.length === 0 && <option value="" disabled>No role matches</option>}
         {groups.map((g) => (
           <optgroup key={g} label={g.replace(/ roles$/, " (sport-specific)")}>

@@ -11,9 +11,8 @@ import { useStore } from "@/lib/store";
 const NAV: { href: string; label: string; sw: string; gated?: boolean }[] = [
   { href: "/", label: "Home", sw: "Mwanzo" },
   { href: "/register", label: "Register", sw: "Sajili" },
-  { href: "/clubs", label: "Clubs", sw: "Klabu", gated: true },
-  { href: "/players", label: "Players", sw: "Wachezaji", gated: true },
-  { href: "/teams", label: "Technical Teams", sw: "Timu za Kiufundi", gated: true },
+  { href: "/clubs", label: "Clubs", sw: "Klabu" },
+    { href: "/teams", label: "Technical Teams", sw: "Timu za Kiufundi", gated: true },
   { href: "/verify", label: "Verify", sw: "Thibitisha" },
   { href: "/facilities", label: "Facilities", sw: "Vituo" },
   { href: "/events", label: "Events", sw: "Matukio" },

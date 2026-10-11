@@ -156,6 +156,11 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
         role_id = r["id"]
     elif d.type == "Player / Sportsperson":
         role_id = "athlete-player-participant"
+        r = R.role_by_id().get(d.role or "")
+        if d.role and (not r or r["type"] != d.type or (r.get("sports") and d.sport not in r["sports"])):
+            err(422, "Choose a role from the list.")
+        if r:
+            role_id = r["id"]
     if d.sport == "other" and len((d.sport_other or "").strip()) < 3:
         err(422, "Tell us the name of the sport. The Registrar will review it.")
     dob = gender = guardian = None
@@ -595,6 +600,21 @@ def club_pay(d: ClubPayIn, db: Session = Depends(get_db), u: User = Depends(need
     return {"applications": [app_out(a, u, owner_view=True) for a in todo]}
 
 
+# ───────────── public club register ─────────────
+@router.get("/clubs")
+def public_clubs(q: str = "", county: str = "", sport: str = "", db: Session = Depends(get_db)):
+    """Verified clubs and organisations only; no personal data and no rosters."""
+    rows = db.scalars(select(Application).where(Application.type.in_(TABS["clubs"]), Application.status == "Approved")
+                      .order_by(Application.club_name, Application.name)).all()
+    needle = q.strip().lower()
+    out = [{"id": a.id, "name": a.club_name or a.name, "type": a.type, "sport": a.sport, "county": a.county,
+            "countyId": a.county_id, "subCounty": a.sub_county, "ward": a.ward, "certificateNo": a.cert_no,
+            "status": "Approved"}
+           for a in rows if (not county or a.county_id == county) and (not sport or a.sport == sport)
+           and (not needle or needle in f"{a.club_name} {a.name} {a.county} {a.sub_county} {a.ward} {a.sport}".lower())]
+    return {"rows": out[:500], "total": len(out)}
+
+
 # ───────────── directory (restricted) ─────────────
 TABS = {"players": ["Player / Sportsperson"],
         "clubs": ["Club", "Academy", "Sports Business", "Facility Operator", "Event Organiser", "Federation / Association"],
@@ -603,7 +623,8 @@ TABS = {"players": ["Player / Sportsperson"],
 
 
 @router.get("/directory")
-def directory(tab: str = "players", q: str = "", county: str = "", sport: str = "", db: Session = Depends(get_db),
+def directory(tab: str = "players", q: str = "", county: str = "", sport: str = "", club: str = "",
+              db: Session = Depends(get_db),
               u: User = Depends(need_user)):
     if tab not in TABS:
         err(422, "Unknown directory tab.")
@@ -620,9 +641,15 @@ def directory(tab: str = "players", q: str = "", county: str = "", sport: str = 
         err(403, "Your role does not include the directory.")
     rows = [a for a in db.scalars(stmt.order_by(Application.name)).all() if u.role == "member" or app_in_scope(u, a)]
     needle = q.strip().lower()
-    out = [directory_row(a) for a in rows
+    clubs = {c.id: (c.club_name or c.name) for c in db.scalars(select(Application).where(Application.type == "Club")).all()}
+    if club == "none":
+        rows = [a for a in rows if not a.club_id]
+    elif club == "any":
+        rows = [a for a in rows if a.club_id]
+    out = [{**directory_row(a), "affiliation": clubs.get(a.club_id, "") if a.club_id else ("Independent" if tab == "players" else "")}
+           for a in rows
            if (not county or a.county_id == county) and (not sport or a.sport == sport)
-           and (not needle or needle in f"{a.name} {a.club_name} {a.county} {a.sub_county} {a.sport}".lower())]
+           and (not needle or needle in f"{a.name} {a.club_name} {clubs.get(a.club_id, '')} {a.county} {a.sub_county} {a.sport}".lower())]
     return {"rows": out[:500], "total": len(out)}
 
 
