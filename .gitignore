@@ -50,3 +50,6 @@ backend/uploads/
 backend/sports.db*
 backend/migrations/versions/__pycache__/
 .env
+
+# keep the example env file tracked
+!.env.example
