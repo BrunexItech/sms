@@ -129,6 +129,8 @@ export interface Application {
   roleName?: string | null;
   /** Name given when the sport is "Other emerging and traditional sports". */
   sportOther?: string;
+  /** Registrar of Societies / company / Sports Registrar certificate number (organisations). */
+  orgRegNo?: string;
   hasContract?: "Yes" | "No";
   notes: string;
   status: AppStatus;

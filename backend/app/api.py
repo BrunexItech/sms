@@ -131,6 +131,9 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
         err(422, "Choose a competition level.")
     if d.type in R.ORG_TYPES and len((d.club_name or "").strip()) < 3:
         err(422, "Enter the organisation name.")
+    reg_no = (d.org_reg_no or "").strip()
+    if d.type in R.REG_NO_TYPES and not re.match(r"^[A-Za-z0-9][A-Za-z0-9 /._-]{2,39}$", reg_no):
+        err(422, "Enter the organisation's registration number (Registrar of Societies, company or Sports Registrar certificate).")
     officials = None
     if d.type == "Club":
         officials = R.norm_officials(d.club_officials)
@@ -201,6 +204,7 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
         kra=d.kra.strip().upper(), phone=d.phone.strip(), email=d.email.strip().lower(), sport=d.sport,
         federation=the_federation(db, d.sport), level=d.level, club_name=(d.club_name or "").strip(),
         officials=officials, role=role_id, sport_other=(d.sport_other or "").strip()[:80] if d.sport == "other" else "",
+        org_reg_no=reg_no if d.type in R.ORG_TYPES else "",
         has_contract=d.has_contract,
         notes=(d.notes or "")[:500], status="Submitted", created_at=t, updated_at=t,
         lat=d.gps.lat if d.gps else None, lon=d.gps.lon if d.gps else None, dob=dob, gender=gender, guardian=guardian,
@@ -239,6 +243,7 @@ class RegisterIn(In):
     club_officials: list[dict] | dict | None = None
     role: str | None = None
     sport_other: str = ""
+    org_reg_no: str = ""
     has_contract: str | None = None
     notes: str = ""
     dob: str | None = None
@@ -491,7 +496,7 @@ def register(d: RegisterIn, response: Response, request: Request, db: Session = 
     ip = request.client.host if request.client else "?"
     if not u and S.too_many_attempts(f"reg:{ip}", limit=int(os.getenv("REG_RATE_LIMIT", "20")), window=3600):
         err(429, "Too many registrations from this connection. Try again later.")
-    check_person(d, kra_required=True)
+    check_person(d, kra_required=d.type not in R.ORG_TYPES)
     place = place_or_422(d.place)
     if not u:
         if not d.password or len(d.password) < 8 or not re.search(r"[A-Za-z]", d.password) or not re.search(r"\d", d.password):

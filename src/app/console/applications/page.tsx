@@ -201,14 +201,15 @@ function Detail({ app }: { app: Application }) {
       <div className="flex flex-wrap gap-2"><Pill>{app.status}</Pill><Pill>{app.payment.status}</Pill></div>
 
       <dl className="grid grid-cols-2 gap-4">
-        <Row k="Applicant" v={app.name} />
+        <Row k={app.orgRegNo !== undefined && app.clubName ? "Contact person" : "Applicant"} v={app.name} />
+        {app.orgRegNo && <Row k="Registration no." v={app.orgRegNo} />}
         <Row k="Sport" v={app.sport === "other" && app.sportOther ? `Other: ${app.sportOther}` : SPORT_BY_ID[app.sport]?.name} />
         {app.roleName && <Row k="Role" v={app.roleName} />}
         <Row k="Federation" v={app.federation} />
         <Row k="Level" v={app.level} />
         <Row k="Location" v={formatPlace(app.place)} />
         <Row k="GPS" v={app.gps ? `${app.gps.lat.toFixed(5)}, ${app.gps.lon.toFixed(5)}` : undefined} />
-        <Row k="National ID / Passport" v={seesPII ? app.idNo : "Restricted for your role"} />
+        <Row k={app.clubName ? "Contact person's ID / Passport" : "National ID / Passport"} v={seesPII ? app.idNo : "Restricted for your role"} />
         <Row k="KRA PIN" v={seesPII ? app.kra : "Restricted for your role"} />
         <Row k="Phone" v={seesPII ? app.phone : "Restricted for your role"} />
         <Row k="Email" v={seesPII ? app.email : "Restricted for your role"} />

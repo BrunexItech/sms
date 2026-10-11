@@ -61,6 +61,7 @@ export interface RegisterDraft {
   sport: string;
   level: string;
   clubName: string;
+  orgRegNo?: string;
   clubOfficials?: ClubOfficial[];
   role?: string;
   sportOther?: string;

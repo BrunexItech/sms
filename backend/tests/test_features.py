@@ -24,7 +24,7 @@ def body(**kw):
     k = next(_n)
     b = {"type": "Player / Sportsperson", "name": f"Feature Person{k} Otieno", "idNo": f"5{k:07d}", "kra": f"A{k:09d}F"[:11],
          "phone": "0712345678", "email": f"f{k}@example.co.ke", "password": "Passw0rdOK", "sport": "football",
-         "level": "Amateur", "dob": "1999-01-01", "gender": "Female", "place": place()}
+         "level": "Amateur", "dob": "1999-01-01", "gender": "Female", "place": place(), "orgRegNo": "SOC/2020/1234"}
     b.update(kw)
     return b
 
@@ -352,3 +352,14 @@ def test_public_club_register_and_player_roles(client_factory, staff):
     # staff can filter independent players
     assert reg.get("/api/directory?tab=players&club=none").status_code == 200
     assert anon.get("/api/directory?tab=players").status_code in (401, 403)
+
+
+def test_organisation_registration_number_and_contact_person(client_factory):
+    base = dict(type="Club", clubName="Reg Number FC", sport="football", clubOfficials=OFFICIALS, kra="")
+    assert client_factory().post("/api/registrations", json=body(**base, orgRegNo="")).status_code == 422
+    ok = client_factory().post("/api/registrations", json=body(**base))
+    assert ok.status_code == 201, ok.text
+    assert ok.json()["application"]["orgRegNo"] == "SOC/2020/1234"
+    # a player is not asked for one and it is not stored
+    p = client_factory().post("/api/registrations", json=body())
+    assert p.status_code == 201 and p.json()["application"]["orgRegNo"] == ""

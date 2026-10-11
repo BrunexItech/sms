@@ -26,7 +26,9 @@ import { Field, inputCls } from "./ui/Field";
 import { ButtonSpinner } from "./ui/Spinner";
 import { PayBox } from "./PayBox";
 
-const STEPS = ["Personal Details", "Location", "Sports Details", "Review"] as const;
+const STEPS = ["Details", "Location", "Sports Details", "Review"] as const;
+
+const REG_NO_TYPES: StakeholderType[] = ["Club", "Academy", "Federation / Association"];
 
 export const ORG_TYPES: StakeholderType[] = [
   "Club",
@@ -54,6 +56,7 @@ interface Form {
   password: string;
   confirm: string;
   clubName: string;
+  orgRegNo: string;
   officials: ClubOfficial[];
   role: string;
   sportOther: string;
@@ -81,9 +84,13 @@ function ageOf(dob: string): number {
 function validate(step: number, f: Form, needPassword = false): Errors {
   const e: Errors = {};
   if (step === 1) {
-    if (f.name.trim().split(/\s+/).length < 2) e.name = "Enter your full legal names (at least two names).";
+    const org = ORG_TYPES.includes(f.type);
+    if (org && f.clubName.trim().length < 3) e.clubName = "Enter the organisation name.";
+    if (REG_NO_TYPES.includes(f.type) && !/^[A-Za-z0-9][A-Za-z0-9 /._-]{2,39}$/.test(f.orgRegNo.trim()))
+      e.orgRegNo = "Enter the registration number on your certificate.";
+    if (f.name.trim().split(/\s+/).length < 2) e.name = org ? "Enter the contact person's full names." : "Enter your full legal names (at least two names).";
     if (!/^[A-Za-z0-9]{6,10}$/.test(f.idNo.trim())) e.idNo = "Enter a valid National ID or passport number.";
-    if (!/^[AP]\d{9}[A-Z]$/i.test(f.kra.trim())) e.kra = "KRA PIN looks like A012345678Z.";
+    if ((f.kra.trim() || !ORG_TYPES.includes(f.type)) && !/^[AP]\d{9}[A-Z]$/i.test(f.kra.trim())) e.kra = "KRA PIN looks like A012345678Z.";
     if (!/^(?:\+?254|0)?[17]\d{8}$/.test(f.phone.replace(/\s/g, ""))) e.phone = "Use a Kenyan number, e.g. 0712 345 678.";
     if (!/^\S+@\S+\.\S+$/.test(f.email)) e.email = "Enter a valid email address.";
     if (needPassword) {
@@ -99,7 +106,6 @@ function validate(step: number, f: Form, needPassword = false): Errors {
   }
   if (step === 3) {
     if (!f.sport) e.sport = "Choose a sport.";
-    if (ORG_TYPES.includes(f.type) && f.clubName.trim().length < 3) e.clubName = "Enter the organisation name.";
     if (f.type === "Club") {
       for (const need of REQUIRED_OFFICIALS) {
         const o = f.officials.find((x) => x.role === need);
@@ -157,6 +163,7 @@ export function RegistrationFlow({
     password: "",
     confirm: "",
     clubName: "",
+    orgRegNo: "",
     officials: DEFAULT_OFFICIALS,
     role: "",
     sportOther: "",
@@ -212,6 +219,7 @@ export function RegistrationFlow({
         sport,
         level: form.level,
         clubName: form.clubName.trim(),
+        orgRegNo: form.orgRegNo.trim(),
         clubOfficials: form.type === "Club" ? form.officials.filter((o) => o.name.trim()).map((o) => ({ ...o, name: o.name.trim() })) : undefined,
         role: PERSONNEL_TYPES.includes(form.type) || form.type === "Player / Sportsperson" ? form.role || undefined : undefined,
         sportOther: sport === "other" ? form.sportOther.trim() : undefined,
@@ -300,17 +308,41 @@ export function RegistrationFlow({
                   <button type="button" role="radio" aria-checked={form.type !== "Player / Sportsperson" && form.type !== "Club"} onClick={() => setForm((f) => ({ ...f, type: f.type === "Player / Sportsperson" || f.type === "Club" ? "Coach" : f.type, role: "" }))}
                     className={`rounded-xl border px-3 py-2.5 text-sm font-bold transition ${form.type !== "Player / Sportsperson" && form.type !== "Club" ? "border-forest-700 bg-forest-100 text-forest-900" : "border-line bg-white text-ink-2 hover:border-forest-700/50"}`}>Coach, official or other</button>
                 </div>
+                {form.type !== "Player / Sportsperson" && form.type !== "Club" && (
+                  <select aria-label="Type" className={`${inputCls} mt-2`} value={form.type}
+                    onChange={(e) => { setForm((f) => ({ ...f, type: e.target.value as StakeholderType, role: "" })); setErrors({}); }}>
+                    {STAKEHOLDER_TYPES.filter((t) => t !== "Player / Sportsperson" && t !== "Club").map((t) => <option key={t}>{t}</option>)}
+                  </select>
+                )}
               </div>
-              <Field label="Full Names" required error={errors.name} className="sm:col-span-2">
+              {isOrg && (
+                <fieldset className="grid gap-4 rounded-xl border border-line bg-bone p-4 sm:col-span-2 sm:grid-cols-2">
+                  <legend className="px-2 text-[13px] font-semibold">Organisation</legend>
+                  <Field label={`${form.type === "Club" ? "Club" : "Organisation"} name`} required error={errors.clubName} className="sm:col-span-2" hint="Names are checked for uniqueness before approval.">
+                    <input className={inputCls} placeholder="e.g. Kibera Stars FC" value={form.clubName} onChange={(e) => set("clubName", e.target.value)} />
+                  </Field>
+                  <Field label="Registration number" required={REG_NO_TYPES.includes(form.type)} error={errors.orgRegNo}
+                    hint="From your Registrar of Societies, company or Sports Registrar certificate.">
+                    <input className={inputCls} placeholder="e.g. SOC/2019/04512" value={form.orgRegNo} onChange={(e) => set("orgRegNo", e.target.value)} />
+                  </Field>
+                  <Field label="Organisation KRA PIN (optional)" error={errors.kra}>
+                    <input className={inputCls} placeholder="Enter KRA PIN" value={form.kra} onChange={(e) => set("kra", e.target.value.toUpperCase().slice(0, 11))} />
+                  </Field>
+                </fieldset>
+              )}
+              <Field label={isOrg ? "Contact person: full names" : "Full Names"} required error={errors.name} className="sm:col-span-2"
+                hint={isOrg ? "The officer who manages this account and answers to the Ministry." : undefined}>
                 <input className={inputCls} placeholder="Enter full names" value={form.name} onChange={(e) => set("name", e.target.value)} autoComplete="name" />
               </Field>
-              <Field label="ID Number" required error={errors.idNo}>
+              <Field label={isOrg ? "Contact person: ID number" : "ID Number"} required error={errors.idNo} className={isOrg ? "sm:col-span-2" : undefined}>
                 <input className={inputCls} placeholder="Enter ID number" value={form.idNo} onChange={(e) => set("idNo", e.target.value)} />
               </Field>
-              <Field label="KRA PIN Number" required error={errors.kra}>
-                <input className={inputCls} placeholder="Enter KRA PIN" value={form.kra} onChange={(e) => set("kra", e.target.value.toUpperCase().slice(0, 11))} />
-              </Field>
-              <Field label="Phone Number" required error={errors.phone} className="sm:col-span-2">
+              {!isOrg && (
+                <Field label="KRA PIN Number" required error={errors.kra}>
+                  <input className={inputCls} placeholder="Enter KRA PIN" value={form.kra} onChange={(e) => set("kra", e.target.value.toUpperCase().slice(0, 11))} />
+                </Field>
+              )}
+              <Field label={isOrg ? "Contact phone number" : "Phone Number"} required error={errors.phone} className="sm:col-span-2">
                 <div className="flex overflow-hidden rounded-xl border border-line bg-white focus-within:border-forest-700 focus-within:ring-4 focus-within:ring-forest-700/12">
                   <span className="flex items-center gap-2 border-r border-line bg-bone px-3 text-sm font-semibold text-ink-2">
                     <span aria-hidden className="inline-block h-3.5 w-5 overflow-hidden rounded-[2px]" style={{ background: "linear-gradient(#000 0 31%,#fff 31% 36%,#c62828 36% 64%,#fff 64% 69%,#148a45 69%)" }} />
@@ -319,7 +351,7 @@ export function RegistrationFlow({
                   <input className="w-full px-3.5 py-3 text-[15px] outline-none" inputMode="tel" placeholder="Enter phone number" value={form.phone} onChange={(e) => set("phone", e.target.value)} autoComplete="tel" />
                 </div>
               </Field>
-              <Field label="Email Address" required error={errors.email} className="sm:col-span-2">
+              <Field label={isOrg ? "Contact email address" : "Email Address"} required error={errors.email} className="sm:col-span-2">
                 <input className={inputCls} type="email" placeholder="Enter email address" value={form.email} onChange={(e) => set("email", e.target.value)} autoComplete="email" />
               </Field>
               {member ? (
@@ -357,11 +389,6 @@ export function RegistrationFlow({
 
           {step === 3 && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Stakeholder type" required>
-                <select className={inputCls} value={form.type} onChange={(e) => { setForm((f) => ({ ...f, type: e.target.value as StakeholderType, role: "" })); setErrors({}); }}>
-                  {STAKEHOLDER_TYPES.map((t) => <option key={t}>{t}</option>)}
-                </select>
-              </Field>
               <Field label="Competition level">
                 <select className={inputCls} value={form.level} onChange={(e) => set("level", e.target.value)}>
                   {COMPETITION_LEVELS.map((l) => <option key={l}>{l}</option>)}
@@ -396,12 +423,6 @@ export function RegistrationFlow({
               {(PERSONNEL_TYPES.includes(form.type) || form.type === "Player / Sportsperson") && (
                 <RolePicker roles={state.roles} type={form.type} sport={sport} value={form.role} onChange={(v) => set("role", v)} error={errors.role}
                   optional={form.type === "Player / Sportsperson"} />
-              )}
-
-              {isOrg && (
-                <Field label="Club / organisation name" required error={errors.clubName} className="sm:col-span-2" hint="Names are checked for uniqueness before approval.">
-                  <input className={inputCls} value={form.clubName} onChange={(e) => set("clubName", e.target.value)} />
-                </Field>
               )}
 
               {form.type === "Club" && (

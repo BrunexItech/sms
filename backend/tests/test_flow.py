@@ -26,6 +26,7 @@ def reg_body(kind="Player / Sportsperson", **kw):
 def make(c, **kw):
     b = reg_body(**kw)
     b["place"] = place(c)
+    b.setdefault("orgRegNo", "SOC/2020/1234")
     return c.post("/api/registrations", json=b), b
 
 
