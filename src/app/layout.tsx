@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
 import { LangProvider } from "@/lib/i18n";
 import { StoreProvider } from "@/lib/store";
@@ -7,6 +7,8 @@ import "./globals.css";
 
 const sans = Inter({ variable: "--font-sans", subsets: ["latin"], display: "swap" });
 const mono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
+
+export const viewport: Viewport = { themeColor: "#062d57" };
 
 export const metadata: Metadata = {
   title: "National Sports Registration Platform | Ministry of Sports, Kenya",
