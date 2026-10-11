@@ -45,7 +45,7 @@ export function DirectoryView({ initialTab = "players", scope = "staff" }: { ini
   const [tab, setTab] = useState<DirectoryTab>(scope === "public" && !PUBLIC_TABS.includes(initialTab) ? "clubs" : initialTab);
   const [q, setQ] = useState(qs.get("q") ?? "");
   const [county, setCounty] = useState("");
-  const [sport, setSport] = useState("");
+  const [sport, setSport] = useState(qs.get("sport") ?? "");
   const [affil, setAffil] = useState("");
   const [page, setPage] = useState(0);
   const [people, setPeople] = useState<{ rows: Row[]; total: number } | null>(null);

@@ -63,7 +63,8 @@ export function AccountView() {
 
 function RegistrationCard({ a }: { a: Application }) {
   const [nowMs] = useState(() => Date.now());
-  const { resubmit, renew, appeal } = useStore();
+  const { resubmit, renew, appeal, state: appState } = useStore();
+  const fed = appState.federations.find((f) => f.sportId === a.sport);
   const [docs, setDocs] = useState(false);
   const [appealNote, setAppealNote] = useState("");
   const [open, setOpen] = useState(false);
@@ -85,6 +86,12 @@ function RegistrationCard({ a }: { a: Application }) {
           <h3 className="text-lg font-extrabold leading-snug text-forest-900">{a.clubName || a.name}</h3>
           <p className="text-xs text-ink-3">{a.type} · {sport?.name} · {formatPlace(a.place)}</p>
           <p className="mt-0.5 font-mono text-[11px] text-ink-3">{a.id}</p>
+          {(fed || a.federation) && (
+            <p className="mt-1 text-xs text-ink-2">
+              Federation: <b>{fed?.name ?? a.federation}</b>
+              {fed?.contactEmail && <> · <a className="font-semibold text-forest-700 hover:underline" href={`mailto:${fed.contactEmail}`}>{fed.contactEmail}</a></>}
+            </p>
+          )}
         </div>
         <Pill>{a.status}</Pill>
       </div>

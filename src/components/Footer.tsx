@@ -35,6 +35,7 @@ export function Footer() {
             {[
               ["Register", "/register"],
               ["Clubs", "/clubs"],
+              ["Federations", "/federations"],
               ["Facilities map", "/facilities"],
               ["Events", "/events"],
               ["Verify a certificate", "/verify"],
