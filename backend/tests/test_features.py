@@ -389,6 +389,8 @@ def test_club_page_lists_only_opted_in_verified_players(client_factory, staff):
     names = [p["name"] for p in page["players"]]
     assert "Listed Player One" in names and "Hidden Player Two" not in names
     assert not {"idNo", "phone", "dob"} & set(page["players"][0])
+    assert any(o["role"] == "Treasurer/Finance Officer" for o in page["officials"])
+    assert not any({"phone", "email"} & set(o) for o in page["officials"])
     assert c.post(f"/api/applications/{hidden['id']}/listing", json={"listed": True}).status_code == 200
     assert "Hidden Player Two" in [p["name"] for p in anon.get(f"/api/clubs/{cid}").json()["players"]]
     assert anon.get("/api/clubs/NSMP-2026-000000").status_code == 404

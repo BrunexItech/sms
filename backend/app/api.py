@@ -637,6 +637,9 @@ def public_club(cid: str, db: Session = Depends(get_db)):
     return {"club": {"id": c.id, "name": c.club_name or c.name, "type": c.type, "sport": c.sport, "level": c.level,
                      "federation": c.federation, "county": c.county, "subCounty": c.sub_county, "ward": c.ward,
                      "certificateNo": c.cert_no},
+            # role and name only: phone and email stay private
+            "officials": [{"role": roles.get(o["role"], {}).get("name", o["role"]), "name": o["name"]}
+                          for o in R.norm_officials(c.officials) if o.get("name")] if c.type == "Club" else [],
             "players": [{"name": p.name, "role": (roles.get(p.role or "") or {}).get("name") or "Athlete/Player",
                          "sport": p.sport} for p in roster]}
 

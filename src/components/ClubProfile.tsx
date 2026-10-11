@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, BadgeCheck, MapPin, ShieldCheck, Users } from "lucide-react";
+import { ArrowLeft, BadgeCheck, MapPin, ShieldCheck, UserCheck, Users } from "lucide-react";
 import { api } from "@/lib/api";
 import { SPORT_BY_ID } from "@/data/sports";
 import { errText } from "@/lib/store";
@@ -10,6 +10,7 @@ import { BlockLoader } from "./ui/Spinner";
 
 interface Profile {
   club: { id: string; name: string; type: string; sport: string; level: string; federation: string; county: string; subCounty: string; ward: string; certificateNo: string | null };
+  officials: { role: string; name: string }[];
   players: { name: string; role: string; sport: string }[];
 }
 
@@ -41,6 +42,20 @@ export function ClubProfile({ id }: { id: string }) {
             </dl>
             <p className="mt-4 flex items-center gap-1.5 text-sm text-ink-2"><MapPin size={15} /> {[data.club.ward, data.club.subCounty, data.club.county].filter(Boolean).join(", ")}</p>
           </section>
+
+          {data.officials.length > 0 && (
+            <section className="rounded-2xl border border-line bg-white p-6">
+              <h3 className="flex items-center gap-2 text-xl font-extrabold text-forest-900"><UserCheck size={20} /> Club leadership</h3>
+              <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {data.officials.map((o, i) => (
+                  <li key={i} className="rounded-lg border border-line px-4 py-3">
+                    <p className="text-xs font-bold uppercase tracking-wider text-ink-3">{o.role}</p>
+                    <p className="font-semibold">{o.name}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
           <section className="rounded-2xl border border-line bg-white p-6">
             <h3 className="flex items-center gap-2 text-xl font-extrabold text-forest-900"><Users size={20} /> Registered players</h3>
