@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Camera, Download, FileText, LogOut, Plus, RefreshCw, Search, Users } from "lucide-react";
+import { AlertCircle, BadgeCheck, CalendarDays, Camera, Check, ChevronRight, ClipboardList, Download, FileText, Landmark, LifeBuoy, LogOut, MapPinned, Plus, RefreshCw, Search, Users, Wallet } from "lucide-react";
 import { SPORT_BY_ID } from "@/data/sports";
 import { formatPlace } from "@/lib/admin";
 import { api } from "@/lib/api";
@@ -18,6 +18,27 @@ import { Field, inputCls } from "./ui/Field";
 import { Pill } from "./ui/Pill";
 import { ButtonSpinner } from "./ui/Spinner";
 
+const STATUS_ACCENT: Record<string, string> = {
+  Approved: "border-t-leaf",
+  Rejected: "border-t-kenya-red",
+  Suspended: "border-t-kenya-red",
+  "Needs info": "border-t-gold",
+};
+
+function Tile({ icon, label, value, hint, tone = "forest" }: { icon: React.ReactNode; label: string; value: React.ReactNode; hint?: string; tone?: "forest" | "leaf" | "gold" | "red" }) {
+  const tones = { forest: "bg-forest-100 text-forest-800", leaf: "bg-leaf/15 text-leaf", gold: "bg-gold-soft text-forest-900", red: "bg-red-50 text-kenya-red" };
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-line bg-white p-3.5 shadow-[0_18px_40px_-34px_rgba(6,45,87,0.6)]">
+      <span className={`hidden h-11 w-11 shrink-0 place-items-center rounded-xl min-[420px]:grid ${tones[tone]}`}>{icon}</span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-ink-3">{label}</p>
+        <p className="text-xl font-extrabold leading-tight text-forest-900 sm:text-2xl">{value}</p>
+        {hint && <p className="text-xs leading-snug text-ink-3">{hint}</p>}
+      </div>
+    </div>
+  );
+}
+
 export function AccountView() {
   const { me, member, state, logout } = useStore();
   const router = useRouter();
@@ -29,34 +50,90 @@ export function AccountView() {
   }, [me, router]);
   if (!member) return null;
 
+  const club = state.club;
   const mine = state.applications.filter((a) => !a.clubId);
+  const all = state.applications;
+  const approved = all.filter((a) => a.status === "Approved").length;
+  const due = all.filter((a) => a.payment.status === "Pending").reduce((n, a) => n + a.payment.amount, 0);
+  const needsYou = all.filter((a) => a.status === "Needs info" || (a.mediaRequest && !a.mediaRequest.fulfilledAt)).length;
+  const roster = club ? all.filter((a) => a.clubId === club.id) : [];
+  const first = member.name.trim().split(/\s+/)[0];
+  const initials = member.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
 
   return (
-    <div className="mx-auto max-w-[1100px] space-y-6 px-5 pb-24">
-      <section className="-mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-white p-5 shadow-[0_40px_80px_-50px_rgba(6,45,87,0.5)] print:hidden">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-ink-3">Signed in</p>
-          <h2 className="text-xl font-extrabold text-forest-900">{member.name}</h2>
-          <p className="text-sm text-ink-3">{member.email}</p>
+    <div className="mx-auto max-w-[1200px] space-y-6 px-5 pb-24">
+      <header className="relative -mt-8 overflow-hidden rounded-2xl bg-gradient-to-br from-forest-800 via-forest-900 to-forest-950 p-6 text-white shadow-[0_40px_80px_-50px_rgba(6,45,87,0.8)] print:hidden sm:p-8">
+        <div aria-hidden className="pitch-lines absolute inset-0 opacity-30" />
+        <div className="relative flex flex-wrap items-center justify-between gap-5">
+          <div className="flex min-w-0 items-center gap-4">
+            <span aria-hidden className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gold text-2xl font-black text-forest-950 shadow-[0_14px_28px_-12px_rgba(245,180,0,0.9)]">{initials || "?"}</span>
+            <div className="min-w-0">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-gold">{club ? "Verified club account" : "Welcome back"}</p>
+              <h2 className="truncate text-2xl font-extrabold sm:text-3xl">{club ? `${first}, ${club.name}` : `Hello, ${first}`}</h2>
+              <p className="mt-0.5 truncate text-sm text-white/70">{member.email}{member.phone ? ` · ${member.phone}` : ""}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2.5">
+            <Link href="/register" className="inline-flex items-center gap-2 rounded-xl bg-gold px-5 py-3 text-sm font-extrabold text-forest-950 shadow-[0_14px_28px_-14px_rgba(245,180,0,0.9)] transition hover:brightness-105"><Plus size={16} /> New registration</Link>
+            <button onClick={async () => { await logout(); router.push("/"); }} className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"><LogOut size={16} /> Sign out</button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/register" className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2.5 text-sm font-bold text-forest-950"><Plus size={16} /> New registration</Link>
-          <button onClick={async () => { await logout(); router.push("/"); }} className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-2.5 text-sm font-bold text-ink-2 hover:bg-bone"><LogOut size={16} /> Sign out</button>
+      </header>
+
+      <div className="grid grid-cols-2 gap-3 print:hidden lg:grid-cols-4">
+        <Tile icon={<ClipboardList size={22} />} label="Registrations" value={all.length} hint={club ? `incl. ${roster.length} players` : undefined} />
+        <Tile icon={<BadgeCheck size={22} />} label="Verified" value={approved} tone="leaf" />
+        <Tile icon={<AlertCircle size={22} />} label="Needs you" value={needsYou} tone={needsYou ? "gold" : "forest"} hint={needsYou ? "Information requested" : "All up to date"} />
+        <Tile icon={<Wallet size={22} />} label="Fees due" value={`KSh ${due.toLocaleString()}`} tone={due ? "red" : "forest"} hint={due ? "Pay to start verification" : "Nothing to pay"} />
+      </div>
+
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-6">
+          {club && <ClubPortal />}
+
+          <section className="print:hidden">
+            <h2 className="mb-3 flex items-center gap-2 text-lg font-extrabold text-forest-900"><ClipboardList size={19} /> My registrations</h2>
+            {mine.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-forest-700/30 bg-white p-8 text-center">
+                <p className="font-bold text-forest-900">No registrations yet</p>
+                <p className="mt-1 text-sm text-ink-3">Register a player, a club or an organisation to get started.</p>
+                <Link href="/register" className="mt-4 inline-flex items-center gap-2 rounded-xl bg-forest-800 px-5 py-2.5 text-sm font-bold text-white"><Plus size={15} /> Start a registration</Link>
+              </div>
+            )}
+            <div className="grid gap-4 2xl:grid-cols-2">
+              {mine.map((a) => <RegistrationCard key={a.id} a={a} />)}
+            </div>
+          </section>
         </div>
-      </section>
 
-      <NotificationList />
-
-      {state.club && <ClubPortal />}
-
-      <section className="print:hidden">
-        <h2 className="mb-3 text-lg font-extrabold text-forest-900">My registrations</h2>
-        {mine.length === 0 && <p className="rounded-2xl border border-line bg-white p-6 text-sm text-ink-3">You have no registrations yet.</p>}
-        <div className="grid gap-4 lg:grid-cols-2">
-          {mine.map((a) => <RegistrationCard key={a.id} a={a} />)}
-        </div>
-      </section>
-
+        <aside className="space-y-6 print:hidden xl:sticky xl:top-28">
+          <NotificationList />
+          <section className="rounded-2xl border border-line bg-white p-5" aria-label="Quick links">
+            <h2 className="text-lg font-extrabold text-forest-900">Quick links</h2>
+            <ul className="mt-3 grid gap-1.5">
+              {[
+                ["/clubs", "Find a club", Users],
+                ["/federations", "Federations", Landmark],
+                ["/facilities", "Facilities map", MapPinned],
+                ["/events", "Upcoming events", CalendarDays],
+                ["/verify", "Verify a certificate", BadgeCheck],
+                ["/contact", "Contact the Ministry", LifeBuoy],
+              ].map(([href, label, Icon]) => {
+                const I = Icon as typeof Users;
+                return (
+                  <li key={href as string}>
+                    <Link href={href as string} className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-forest-900 transition hover:bg-bone">
+                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-forest-100 text-forest-800 transition group-hover:bg-forest-800 group-hover:text-white"><I size={16} /></span>
+                      {label as string}
+                      <ChevronRight size={15} className="ml-auto text-ink-3 transition group-hover:translate-x-0.5" />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        </aside>
+      </div>
     </div>
   );
 }
@@ -76,7 +153,7 @@ function RegistrationCard({ a }: { a: Application }) {
   const last = a.history[a.history.length - 1];
 
   return (
-    <article className="rounded-2xl border border-line bg-white p-5">
+    <article className={`rounded-2xl border border-line border-t-4 bg-white p-5 shadow-[0_18px_40px_-34px_rgba(6,45,87,0.6)] ${STATUS_ACCENT[a.status] ?? "border-t-forest-700"}`}>
       <div className="flex items-start justify-between gap-3">
         {a.photoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
@@ -96,15 +173,18 @@ function RegistrationCard({ a }: { a: Application }) {
         <Pill>{a.status}</Pill>
       </div>
 
-      <ol className="mt-4 flex items-center gap-1.5 text-[11px] font-semibold text-ink-3" aria-label="Progress">
-        {["Submitted", "Under review", "Endorsed", "Approved"].map((st, i, arr) => {
+      <ol className="mt-5 flex items-start" aria-label="Progress">
+        {["Submitted", "Under review", "Endorsed", "Approved"].map((st, i) => {
           const order = ["Submitted", "Under review", "Needs info", "Endorsed", "Approved"];
           const reached = order.indexOf(a.status) >= order.indexOf(st) || a.status === "Suspended";
+          const current = a.status === st || (a.status === "Needs info" && st === "Under review");
           return (
-            <li key={st} className="flex flex-1 items-center gap-1.5">
-              <span className={`h-2 flex-1 rounded-full ${reached ? "bg-leaf" : "bg-line"}`} />
-              <span className={reached ? "text-leaf" : ""}>{st}</span>
-              {i < arr.length - 1 && null}
+            <li key={st} className="relative flex flex-1 flex-col items-center text-center">
+              {i > 0 && <span aria-hidden className={`absolute right-1/2 top-[13px] h-[3px] w-full ${reached ? "bg-leaf" : "bg-line"}`} />}
+              <span className={`relative grid h-[27px] w-[27px] place-items-center rounded-full text-[11px] font-bold ${reached ? "bg-leaf text-white" : "bg-line text-ink-3"} ${current ? "ring-4 ring-leaf/20" : ""}`}>
+                {reached && !current ? <Check size={14} strokeWidth={3.5} /> : i + 1}
+              </span>
+              <span className={`mt-1.5 text-[11px] font-semibold leading-tight ${reached ? "text-forest-900" : "text-ink-3"}`}>{st}</span>
             </li>
           );
         })}
@@ -222,6 +302,7 @@ function ClubPortal() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [mediaFor, setMediaFor] = useState<string | null>(null);
 
   const shown = roster.filter((a) => !q.trim() || `${a.name} ${a.idNo} ${a.status}`.toLowerCase().includes(q.trim().toLowerCase()));
@@ -238,6 +319,7 @@ function ClubPortal() {
         guardian: young ? { name: form.gName, phone: form.gPhone, relationship: form.gRel, consent: form.gConsent } : undefined,
       });
       notify(`${p.name} added. Pay the registration fee to send them for verification.`);
+      setAdding(false);
       setForm({ ...form, name: "", idNo: "", phone: "", kra: "", dob: "", gender: "", gName: "", gPhone: "", gRel: "", gConsent: false });
     } catch (x) {
       setErr(errText(x));
@@ -247,17 +329,25 @@ function ClubPortal() {
   };
 
   return (
-    <section className="rounded-2xl border border-forest-700/30 bg-white p-5 shadow-[0_24px_50px_-34px_rgba(6,45,87,0.6)] print:hidden sm:p-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-leaf">Verified club</p>
-          <h2 className="flex items-center gap-2 text-2xl font-extrabold text-forest-900"><Users size={22} /> {club.name}: player roster</h2>
-          <p className="text-sm text-ink-3">Players you add are verified by the county office and the Registrar before they appear on the national record.</p>
+    <section className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_24px_50px_-34px_rgba(6,45,87,0.6)] print:hidden">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-gradient-to-r from-forest-100/70 to-white p-5 sm:p-6">
+        <div className="flex items-center gap-3.5">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-forest-800 text-white"><Users size={22} /></span>
+          <div>
+            <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-leaf"><BadgeCheck size={14} /> Verified club</p>
+            <h2 className="text-xl font-extrabold text-forest-900 sm:text-2xl">{club.name}: player roster</h2>
+            <p className="text-[13px] text-ink-3">Players you add are verified by the county office and the Registrar before they appear on the national record.</p>
+          </div>
         </div>
-        <span className="rounded-full bg-forest-100 px-3 py-1 text-sm font-bold text-forest-800">{roster.length} players</span>
+        <div className="flex items-center gap-2.5">
+          <span className="rounded-full bg-forest-100 px-3.5 py-1.5 text-sm font-bold text-forest-800">{roster.length} player{roster.length === 1 ? "" : "s"}</span>
+          <button type="button" onClick={() => setAdding((v) => !v)} aria-expanded={adding} className="inline-flex items-center gap-2 rounded-xl bg-forest-800 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-forest-900">
+            <Plus size={16} className={`transition ${adding ? "rotate-45" : ""}`} /> {adding ? "Close" : "Add a player"}
+          </button>
+        </div>
       </div>
-
-      <form onSubmit={add} className="mt-5 grid gap-3 rounded-xl border border-line bg-bone p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="p-5 sm:p-6">
+      {adding && <form onSubmit={add} className="step-anim mb-5 grid gap-3 rounded-xl border border-line bg-bone p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Player's full names" required className="lg:col-span-2">
           <input className={inputCls} value={form.name} onChange={(e) => { setForm({ ...form, name: e.target.value }); setErr(""); }} />
         </Field>
@@ -302,9 +392,9 @@ function ClubPortal() {
           </button>
         </div>
         {err && <p role="alert" className="text-sm font-semibold text-kenya-red sm:col-span-2 lg:col-span-4">{err}</p>}
-      </form>
+      </form>}
 
-      <div className="mt-5 flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-[220px] flex-1">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3" />
           <input className={`${inputCls} pl-10`} placeholder="Search your roster by name, ID or status…" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -357,6 +447,7 @@ function ClubPortal() {
           <MediaPanel key={mediaFor} applicationId={mediaFor} canEdit />
         </div>
       )}
+      </div>
     </section>
   );
 }
