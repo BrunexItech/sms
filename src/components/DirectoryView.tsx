@@ -51,6 +51,7 @@ export function DirectoryView({ initialTab = "players", scope = "staff", tabs: t
   const [county, setCounty] = useState("");
   const [sport, setSport] = useState(qs.get("sport") ?? "");
   const [affil, setAffil] = useState("");
+  const [fedView, setFedView] = useState<"recognised" | "all">("recognised");
   const [page, setPage] = useState(0);
   const [people, setPeople] = useState<{ rows: Row[]; total: number } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -113,14 +114,18 @@ export function DirectoryView({ initialTab = "players", scope = "staff", tabs: t
   const federationRows: Row[] = useMemo(() => {
     if (tab !== "federations") return [];
     const n = q.trim().toLowerCase();
+    const recognised = state.federations.filter((f) => f.status === "Recognised");
+    // until any federation is recognised, show every sport so the page is never empty
+    const only = fedView === "recognised" && recognised.length > 0;
     return state.federations
-      .filter((f) => (!sport || f.sportId === sport) && (!n || `${f.name} ${f.sportName}`.toLowerCase().includes(n)))
+      .filter((f) => (!only || f.status === "Recognised") && (!sport || f.sportId === sport) && (!n || `${f.name} ${f.sportName}`.toLowerCase().includes(n)))
       .map((f) => ({
         key: f.sportId, name: f.name.split(";")[0].trim(), kind: "National federation", sport: f.sportName, place: "National",
         status: f.status === "Recognised" ? "Recognised" : "To be confirmed", extra: f.contactEmail, affiliation: "",
         href: `/federations/${encodeURIComponent(f.sportId)}`,
       }));
-  }, [tab, q, sport, state.federations]);
+  }, [tab, q, sport, fedView, state.federations]);
+  const recognisedCount = state.federations.filter((f) => f.status === "Recognised").length;
 
   const rows = tab === "facilities" ? facilityRows : tab === "federations" ? federationRows : (people?.rows ?? []);
   const pages = Math.max(1, Math.ceil(rows.length / PAGE));
@@ -148,7 +153,7 @@ export function DirectoryView({ initialTab = "players", scope = "staff", tabs: t
 
         {(
           <>
-            <div className={`mt-5 grid gap-3 ${tab === "players" && staffView ? "md:grid-cols-[1fr_200px_200px_200px]" : tab === "federations" ? "md:grid-cols-[1fr_260px]" : "md:grid-cols-[1fr_220px_200px]"}`}>
+            <div className={`mt-5 grid gap-3 ${tab === "players" && staffView ? "md:grid-cols-[1fr_200px_200px_200px]" : tab === "federations" ? "md:grid-cols-[1fr_240px_200px]" : "md:grid-cols-[1fr_220px_200px]"}`}>
               <div className="relative">
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3" />
                 <input className={`${inputCls} pl-10`} placeholder="Search names, clubs, sports, places…" value={q} onChange={(e) => reset(() => setQ(e.target.value))} />
@@ -163,6 +168,12 @@ export function DirectoryView({ initialTab = "players", scope = "staff", tabs: t
                 <option value="">Any sport</option>
                 {SPORTS.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
+              {tab === "federations" && (
+                <select className={inputCls} value={fedView} onChange={(e) => reset(() => setFedView(e.target.value as "recognised" | "all"))} aria-label="Show">
+                  <option value="recognised">Recognised federations ({recognisedCount})</option>
+                  <option value="all">All sports ({state.federations.length})</option>
+                </select>
+              )}
               {tab === "players" && staffView && (
                 <select className={inputCls} value={affil} onChange={(e) => reset(() => setAffil(e.target.value))} aria-label="Club affiliation">
                   <option value="">Club and independent</option>
