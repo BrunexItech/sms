@@ -208,6 +208,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [minDelay, setMinDelay] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+
   const apply = useCallback((b: Boot, keepFacilities: boolean) => {
     setMe(b.me);
     setState((prev) => {
@@ -291,6 +292,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       login: async (identifier, password, code, audience) => {
         const r = await api<{ me: Me }>("/auth/login", "POST", { identifier, password, code: code ?? "", audience });
         await refresh();
+        const first = r.me.name.trim().split(/\s+/)[0];
+        notify(r.me.staff ? "You are signed in to the staff console." : "Your account is ready.", "ok", `Welcome back, ${first}`);
         return r.me;
       },
       markNotificationsRead: async () => {
@@ -307,8 +310,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         return r;
       },
       logout: async () => {
+        const first = me?.name.trim().split(/\s+/)[0];
         await api("/auth/logout", "POST");
         await refresh();
+        notify(first ? `Goodbye, ${first}. Your session has ended safely.` : "Your session has ended safely.", "ok", "Signed out");
       },
 
       register: async (d) => {

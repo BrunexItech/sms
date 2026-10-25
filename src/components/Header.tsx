@@ -125,7 +125,7 @@ export function Header() {
               </button>
             )}
             {(user || member) && <NotificationBell allHref={account.href} />}
-            <Link href={account.href} className="hidden items-center gap-2 rounded-lg border border-forest-900/30 px-5 py-2.5 text-sm font-semibold text-forest-900 transition hover:bg-forest-100 sm:flex">
+            <Link href={account.href} className="hidden items-center gap-2 whitespace-nowrap rounded-lg border border-forest-900/30 px-5 py-2.5 text-sm font-semibold text-forest-900 transition hover:bg-forest-100 sm:flex">
               {account.icon} {account.label}
             </Link>
             {!user && !member && <Link href="/register" className="hidden rounded-lg bg-gradient-to-b from-forest-800 to-forest-900 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(6,45,87,0.8)] transition hover:brightness-110 sm:block">

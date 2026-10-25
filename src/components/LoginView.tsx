@@ -48,7 +48,6 @@ export function LoginView() {
     <div className={`mx-auto grid gap-6 px-5 pb-24 ${state.config.demo ? "max-w-[1100px] lg:grid-cols-[1fr_1fr]" : "max-w-lg"}`}>
       <section className="-mt-8 self-start rounded-2xl border border-line bg-white p-6 shadow-[0_40px_80px_-50px_rgba(6,45,87,0.5)] sm:p-8">
         <h2 className="text-xl font-bold text-forest-900">Sign in</h2>
-        <p className="mt-1 text-sm text-ink-3">For players and clubs. Ministry and federation staff use the <Link href="/staff" className="font-bold text-forest-700 underline">staff sign-in</Link>.</p>
         {me ? (
           <div className="mt-6 rounded-xl bg-forest-100 p-4 text-sm">
             Signed in as <b>{me.name}</b>.{" "}
