@@ -290,7 +290,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       notify,
 
       login: async (identifier, password, code, audience) => {
-        const r = await api<{ me: Me }>("/auth/login", "POST", { identifier, password, code: code ?? "", audience });
+        let r: { me: Me };
+        try {
+          r = await api<{ me: Me }>("/auth/login", "POST", { identifier, password, code: code ?? "", audience });
+        } catch (e) {
+          // 428 only asks for the authenticator code; every other failure gets a notice as well as the inline message
+          if (!(e instanceof ApiError && e.status === 428)) notify(errText(e), "error", "Sign-in failed");
+          throw e;
+        }
         await refresh();
         const first = r.me.name.trim().split(/\s+/)[0];
         notify(r.me.staff ? "You are signed in to the staff console." : "Your account is ready.", "ok", `Welcome back, ${first}`);
@@ -319,6 +326,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       register: async (d) => {
         const r = await api<{ application: Application }>("/registrations", "POST", d as unknown as Record<string, unknown>);
         await refresh();
+        if (!me) notify("Your account was created and you are signed in. Use your email and password next time.", "ok", "Account created");
         return r.application;
       },
       payApplication: async (id, method, ref, otp) => {
