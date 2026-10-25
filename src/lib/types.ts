@@ -259,6 +259,8 @@ export interface AppConfig {
   demoOtp: boolean;
   /** True only on demo deployments that were seeded with sample accounts. */
   demo: boolean;
+  /** Whether approval needs a paid fee (waived until online payment is live, unless an administrator decides). */
+  required: boolean;
   evidence: EvidenceRule;
 }
 

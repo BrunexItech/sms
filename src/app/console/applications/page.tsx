@@ -185,7 +185,7 @@ function Detail({ app }: { app: Application }) {
   if (can("applications.endorse") && s === "Under review")
     actions.push(<button key="e" className={`${btn} bg-teal-700 text-white hover:bg-teal-800`} onClick={() => act("Endorsed")}><Stamp size={15} /> Endorse membership</button>);
   if (can("applications.decide") && (s === "Under review" || s === "Endorsed")) {
-    const unpaid = app.payment.status !== "Paid" ? "Cannot approve: the registration fee has not been paid." : undefined;
+    const unpaid = app.payment.status !== "Paid" && state.config.required ? "Cannot approve: the registration fee has not been paid." : undefined;
     actions.push(<button key="a" className={`${btn} bg-forest-800 text-white hover:bg-forest-700`} onClick={() => act("Approved", false, unpaid)}><Check size={15} /> Approve & issue certificate</button>);
     actions.push(<button key="x" className={`${btn} bg-red-100 text-kenya-red-deep hover:bg-red-200`} onClick={() => act("Rejected", true)}><X size={15} /> Reject</button>);
   }

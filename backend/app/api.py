@@ -445,7 +445,8 @@ def bootstrap(facilities: int = 1, db: Session = Depends(get_db), u: User | None
     out = {
         "me": user_out(u) if u else None, "fees": fees(db), "stats": stats(db), "evidence": evidence_rule(db),
         "catalogue": {"roles": R.roles()},
-        "payments": {"mpesa": C.MPESA_READY, "demoOtp": not C.PRODUCTION and not C.MPESA_READY, "demo": C.SEED_DEMO},
+        "payments": {"mpesa": C.MPESA_READY, "demoOtp": not C.PRODUCTION and not C.MPESA_READY, "demo": C.SEED_DEMO,
+                     "required": payment_required(db)},
         "federations": [federation_out(f) for f in db.scalars(select(Federation).order_by(Federation.sport_name)).all()],
         "events": [event_out(e) for e in db.scalars(select(Event).where(Event.status == "Approved").order_by(Event.date)).all()],
     }
@@ -762,6 +763,15 @@ ACTIONS = {
 }
 
 
+def payment_required(db: Session) -> bool:
+    """Approval needs a paid fee. Until M-Pesa is live there is no way to pay online, so by default it is waived;
+    an administrator can switch it on or off explicitly in the Control Center."""
+    row = db.get(Setting, "payment_rule")
+    if row and "required" in (row.value or {}):
+        return bool(row.value["required"])
+    return bool(C.MPESA_READY)
+
+
 def evidence_rule(db: Session) -> dict:
     row = db.get(Setting, "evidence")
     base = {"enabled": True, "levels": ["Professional", "Semi-Professional"], "sports": [], "clubDocuments": True}
@@ -790,7 +800,7 @@ def perform_transition(db: Session, u: User, a: Application, action: str, note: 
     if need_note and len(note) < 3:
         err(422, "A reason is required for this action.")
     if action == "approve":
-        if a.pay_status != "Paid":
+        if a.pay_status != "Paid" and payment_required(db):
             err(409, "Cannot approve: the registration fee has not been paid.")
         if a.club_id:
             club = db.get(Application, a.club_id)
@@ -824,6 +834,8 @@ def perform_transition(db: Session, u: User, a: Application, action: str, note: 
     if action in ("reopen", "reinstate"):
         a.appeal = None
     label = "Reinstated" if action == "reinstate" else {"info_received": "Information received", "reopen": "Reopened after appeal"}.get(action, to)
+    if action == "approve" and a.pay_status != "Paid":
+        label = "Approved without payment (payment is not required at present)"
     a.history = [*a.history, hist(u, label, note or None)]
     log(db, u, f"Status → {to}", a.id)
     owner = db.get(User, a.owner_id) if a.owner_id else None

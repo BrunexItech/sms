@@ -341,6 +341,37 @@ function EditUser({ u, ov, self, canRights, isSuper, onDone }: { u: StaffUser; o
 }
 
 /* ───────── role rights ───────── */
+function PaymentRuleCard({ canEdit }: { canEdit: boolean }) {
+  const { state, refresh, notify } = useStore();
+  const required = state.config.required;
+  const [busy, setBusy] = useState(false);
+  const set = async (v: boolean) => {
+    setBusy(true);
+    try {
+      await api("/control/payment-rule", "PUT", { required: v });
+      await refresh();
+      notify(v ? "Approval now needs a paid fee." : "Approval no longer needs a paid fee.");
+    } catch (e) {
+      notify(errText(e), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title="Payment before approval" className="lg:col-span-2">
+      <p className="mb-3 text-sm text-ink-2">
+        {state.config.mpesa ? "Online payment (M-Pesa) is live." : "Online payment is not live yet, so applicants cannot pay."} When payment is not required, the Registrar can approve an application whose fee is still pending; the record keeps the fee as pending and the history notes the approval was made without payment.
+      </p>
+      <fieldset disabled={!canEdit || busy} className="flex flex-wrap items-center gap-3">
+        <span className={`rounded-full px-3 py-1 text-sm font-bold ${required ? "bg-gold-soft text-forest-900" : "bg-leaf/15 text-leaf"}`}>{required ? "Payment required" : "Payment not required"}</span>
+        <button type="button" onClick={() => set(!required)} className="inline-flex items-center gap-2 rounded-lg bg-forest-800 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40">
+          {busy ? <ButtonSpinner /> : <Check size={15} />} {required ? "Do not require payment" : "Require payment"}
+        </button>
+      </fieldset>
+    </Card>
+  );
+}
+
 function EvidenceCard({ canEdit }: { canEdit: boolean }) {
   const { state, refresh, notify } = useStore();
   const rule = state.config.evidence;
@@ -402,6 +433,7 @@ function Roles({ ov, canRights, reload }: { ov: Overview; canRights: boolean; re
   };
   return (
     <div className="grid gap-5 lg:grid-cols-2">
+      <PaymentRuleCard canEdit={canRights} />
       <EvidenceCard canEdit={canRights} />
       {ov.roles.map((r) => {
         const cur = draft[r.id] ?? r.perms;

@@ -157,7 +157,7 @@ type Boot = Partial<State> & {
   me: Me | null;
   facilities?: Facility[];
   club?: ClubInfo | null;
-  payments?: { mpesa: boolean; demoOtp: boolean; demo: boolean };
+  payments?: { mpesa: boolean; demoOtp: boolean; demo: boolean; required: boolean };
   evidence?: AppConfig["evidence"];
   catalogue?: { roles: RoleItem[] };
 };
@@ -174,7 +174,7 @@ const EMPTY: State = {
   club: null,
   notifications: [],
   roles: [],
-  config: { mpesa: false, demoOtp: true, demo: false, evidence: { enabled: true, levels: [], sports: [], clubDocuments: true } },
+  config: { mpesa: false, demoOtp: true, demo: false, required: false, evidence: { enabled: true, levels: [], sports: [], clubDocuments: true } },
 };
 
 // Status change → the server-side action name.

@@ -130,8 +130,18 @@ def test_renewal_appeal_certificate_bulk(client_factory, staff):
     b = make(d)
     r = nbo.post("/api/applications/bulk", json={"ids": [a["id"], b["id"], "NSMP-2026-000000"], "action": "review"}).json()
     assert r["done"] == 2 and not next(x for x in r["results"] if x["id"] == "NSMP-2026-000000")["ok"]
-    # review does not need payment, approval does
+    # online payment is not live in tests, so approval is allowed without a paid fee by default ...
+    admin = staff("super.admin@sports.example.ke")
+    assert admin.get("/api/bootstrap?facilities=0").json()["payments"]["required"] is False
+    # ... until an administrator requires it: then review does not need payment, approval does
+    assert reg.put("/api/control/payment-rule", json={"required": True}).status_code == 403
+    assert admin.put("/api/control/payment-rule", json={"required": True}).status_code == 200
     assert reg.post(f"/api/applications/{b['id']}/transition", json={"action": "approve"}).status_code == 409
+    assert admin.put("/api/control/payment-rule", json={"required": False}).status_code == 200
+    ok = reg.post(f"/api/applications/{b['id']}/transition", json={"action": "approve"})
+    assert ok.status_code == 200 and ok.json()["application"]["payment"]["status"] == "Pending"
+    assert "without payment" in ok.json()["application"]["history"][-1]["action"]
+    assert admin.put("/api/control/payment-rule", json={"required": True}).status_code == 200
     assert reg.post(f"/api/applications/{a['id']}/transition", json={"action": "approve"}).status_code == 200
     ap = c.get("/api/bootstrap?facilities=0").json()["applications"][0]
     assert ap["expiresAt"] and ap["certificateNo"]

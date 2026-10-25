@@ -18,7 +18,7 @@ from . import mpesa
 from . import refdata as R
 from . import security as S
 from . import settings as C
-from .api import (ROLE_LABEL, In, app_out, can, err, evidence_rule, hist, log, need_user, now, optional_user,
+from .api import (ROLE_LABEL, In, app_out, can, err, evidence_rule, hist, log, need_user, now, optional_user, payment_required,
                   settle, app_in_scope, user_out, fees, rid)
 from .db import get_db
 from .models import Application, Event, Notification, PasswordReset, PaymentAttempt, Setting, User
@@ -367,6 +367,22 @@ def set_evidence(d: EvidenceIn, db: Session = Depends(get_db), u: User = Depends
     log(db, u, "Evidence rule changed", "settings")
     db.commit()
     return {"evidence": evidence_rule(db)}
+
+
+class PaymentRuleIn(In):
+    required: bool
+
+
+@router.put("/control/payment-rule")
+def set_payment_rule(d: PaymentRuleIn, db: Session = Depends(get_db), u: User = Depends(need_user)):
+    if not (can(u, "roles.manage") or can(u, "settings.manage")):
+        err(403, "Only an administrator can change the payment rule.")
+    row = db.get(Setting, "payment_rule") or Setting(key="payment_rule", value={})
+    row.value = {"required": d.required}
+    db.merge(row)
+    log(db, u, f"Payment before approval {'required' if d.required else 'waived'}", "settings")
+    db.commit()
+    return {"required": payment_required(db)}
 
 
 # ───────────── M-Pesa (Daraja) ─────────────
