@@ -222,10 +222,18 @@ export function RegistrationFlow({
     if (n > step) {
       const e = validate(step, eff, !member);
       setErrors(e);
-      if (Object.keys(e).length) return;
+      if (Object.keys(e).length) {
+        // bring the first problem field into view, clear of the sticky header
+        setTimeout(() => {
+          const el = top.current?.querySelector("[data-field-error]") ?? top.current?.querySelector(".text-kenya-red");
+          el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 60);
+        return;
+      }
     }
     setStep(n);
-    top.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // show the next page of fields from its top, below the sticky header
+    setTimeout(() => top.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
   };
 
   const submit = async () => {
@@ -260,7 +268,7 @@ export function RegistrationFlow({
         website: form.website,
       });
       setDone(app);
-      top.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      setTimeout(() => top.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
     } catch (err) {
       setServerError(errText(err));
     } finally {
@@ -274,10 +282,10 @@ export function RegistrationFlow({
 
   const frame = (inner: React.ReactNode) =>
     compact ? (
-      <div ref={top} className={shell}>{inner}</div>
+      <div ref={top} className={`scroll-mt-28 ${shell}`}>{inner}</div>
     ) : (
       <div className="mx-auto max-w-3xl px-5 pb-24">
-        <div ref={top} className={`-mt-8 ${shell}`}>{inner}</div>
+        <div ref={top} className={`-mt-8 scroll-mt-36 ${shell}`}>{inner}</div>
       </div>
     );
 

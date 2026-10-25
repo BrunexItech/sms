@@ -35,7 +35,7 @@ export function RolePicker({
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
         <input className={`${inputCls} py-2.5 pl-9`} placeholder="Search roles…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search roles" />
       </div>
-      <select className={inputCls} value={value} onChange={(e) => onChange(e.target.value)} size={Math.min(8, Math.max(3, shown.length + groups.length))}>
+      <select className={inputCls} value={value} onChange={(e) => onChange(e.target.value)}>
         {optional && <option value="">Athlete / Player (default)</option>}
         {shown.length === 0 && <option value="" disabled>No role matches</option>}
         {groups.map((g) => (

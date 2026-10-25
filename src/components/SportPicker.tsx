@@ -35,7 +35,7 @@ export function SportPicker({
           className="w-full rounded-xl border border-line bg-white py-2.5 pl-10 pr-4 text-sm outline-none focus:border-forest-700 focus:ring-4 focus:ring-forest-700/12"
         />
       </div>
-      <div className={`grid max-h-[320px] gap-2.5 overflow-y-auto pr-1 ${compact ? "grid-cols-3" : "grid-cols-3 sm:grid-cols-4 lg:grid-cols-5"}`}>
+      <div className={`grid gap-2.5 ${compact ? "max-h-[320px] grid-cols-3 overflow-y-auto pr-1" : "grid-cols-2 min-[420px]:grid-cols-3 sm:grid-cols-4 lg:grid-cols-5"}`}>
         {list.map((s) => {
           const on = value.includes(s.id);
           return (
