@@ -175,7 +175,7 @@ function RegistrationCard({ a }: { a: Application }) {
         )}
         {ORG_TYPES.includes(a.type) && (
           <button onClick={() => setDocs((o) => !o)} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3.5 py-2.5 text-sm font-bold text-forest-800 hover:bg-bone">
-            <FileText size={15} /> Documents {a.type === "Club" && a.status !== "Approved" && <span className="text-xs font-semibold text-kenya-red">(required)</span>}
+            <FileText size={15} /> Documents {["Club", "Federation / Association", "County Branch"].includes(a.type) && a.status !== "Approved" && <span className="text-xs font-semibold text-kenya-red">(required)</span>}
           </button>
         )}
         {a.type === "Player / Sportsperson" && a.status !== "Rejected" && (

@@ -37,7 +37,7 @@ export function ClubProfile({ id }: { id: string }) {
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
               <div><dt className="text-ink-3">Sport</dt><dd className="font-semibold">{SPORT_BY_ID[data.club.sport]?.name ?? data.club.sport}</dd></div>
               <div><dt className="text-ink-3">Level</dt><dd className="font-semibold">{data.club.level}</dd></div>
-              <div><dt className="text-ink-3">Federation</dt><dd className="font-semibold">{data.club.federation || "—"}</dd></div>
+              <div><dt className="text-ink-3">Federation</dt><dd className="font-semibold"><Link className="hover:underline" href={`/federations/${encodeURIComponent(data.club.sport)}`}>{data.club.federation || "—"}</Link></dd></div>
               <div><dt className="text-ink-3">Certificate</dt><dd className="font-mono text-xs font-semibold">{data.club.certificateNo ? <Link className="hover:underline" href={`/verify?no=${encodeURIComponent(data.club.certificateNo)}`}>{data.club.certificateNo}</Link> : "—"}</dd></div>
             </dl>
             <p className="mt-4 flex items-center gap-1.5 text-sm text-ink-2"><MapPin size={15} /> {[data.club.ward, data.club.subCounty, data.club.county].filter(Boolean).join(", ")}</p>

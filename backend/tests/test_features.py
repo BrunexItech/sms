@@ -394,3 +394,49 @@ def test_club_page_lists_only_opted_in_verified_players(client_factory, staff):
     assert c.post(f"/api/applications/{hidden['id']}/listing", json={"listed": True}).status_code == 200
     assert "Hidden Player Two" in [p["name"] for p in anon.get(f"/api/clubs/{cid}").json()["players"]]
     assert anon.get("/api/clubs/NSMP-2026-000000").status_code == 404
+
+
+def test_federation_and_county_branch_hierarchy(client_factory, staff):
+    reg = staff("registrar@sports.example.ke")
+    doc = {"kind": "document", "title": "Constitution"}
+    pdf = {"file": ("c.pdf", b"%PDF-1.4\n" + b"0" * 64, "application/pdf")}
+    base = dict(sport="volleyball", clubOfficials=OFFICIALS, level="Amateur")
+
+    # a branch cannot register before its national federation is verified
+    anon = client_factory()
+    assert anon.get("/api/federations/volleyball/national").json()["rows"] == []
+    assert client_factory().post("/api/registrations", json=body(type="County Branch", clubName="Nakuru Volleyball", **base)).status_code == 422
+
+    # the national federation names president, secretary and treasurer
+    fed_c = client_factory()
+    no_tr = [o for o in OFFICIALS if o["role"] != "treasurer-finance-officer"]
+    assert fed_c.post("/api/registrations", json=body(type="Federation / Association", clubName="Kenya Volleyball Federation", **{**base, "clubOfficials": no_tr})).status_code == 422
+    r = fed_c.post("/api/registrations", json=body(type="Federation / Association", clubName="Kenya Volleyball Federation", **base))
+    assert r.status_code == 201, r.text
+    fid = r.json()["application"]["id"]
+    pay(fed_c, fid)
+    assert fed_c.post(f"/api/applications/{fid}/media", data=doc, files=pdf).status_code == 201
+    assert reg.post(f"/api/applications/{fid}/transition", json={"action": "review"}).status_code == 200
+    assert reg.post(f"/api/applications/{fid}/transition", json={"action": "approve"}).status_code == 200
+
+    # approval makes it the sport's federation of record
+    page = anon.get("/api/federations/volleyball").json()
+    assert page["federation"]["name"] == "Kenya Volleyball Federation" and page["national"]["id"] == fid
+    assert {o["role"] for o in page["national"]["officials"]} >= {"Treasurer/Finance Officer"}
+    assert anon.get("/api/federations/volleyball/national").json()["rows"][0]["id"] == fid
+
+    # county branch: needs the right parent, then appears under it once verified
+    br = client_factory()
+    assert br.post("/api/registrations", json=body(type="County Branch", clubName="Nakuru Volleyball", **{**base, "sport": "football"}, parentId=fid)).status_code == 422
+    r2 = br.post("/api/registrations", json=body(type="County Branch", clubName="Nakuru Volleyball Association", parentId=fid, **base))
+    assert r2.status_code == 201, r2.text
+    bid = r2.json()["application"]["id"]
+    assert not anon.get("/api/federations/volleyball").json()["branches"]
+    pay(br, bid)
+    assert br.post(f"/api/applications/{bid}/media", data=doc, files=pdf).status_code == 201
+    reg.post(f"/api/applications/{bid}/transition", json={"action": "review"})
+    assert reg.post(f"/api/applications/{bid}/transition", json={"action": "approve"}).status_code == 200
+    branches = anon.get("/api/federations/volleyball").json()["branches"]
+    assert [b["name"] for b in branches] == ["Nakuru Volleyball Association"]
+    assert not any({"phone", "email"} & set(o) for o in branches[0]["officials"])
+    assert anon.get("/api/federations/nope").status_code == 404

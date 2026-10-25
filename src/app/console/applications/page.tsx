@@ -249,7 +249,7 @@ function Detail({ app }: { app: Application }) {
       )}
       {ORG_TYPES.includes(app.type) && (
         <div>
-          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-3">Documents {app.type === "Club" && "(required for approval)"}</p>
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink-3">Documents {["Club", "Federation / Association", "County Branch"].includes(app.type) && "(required for approval)"}</p>
           <DocumentsPanel applicationId={app.id} canEdit={false} />
         </div>
       )}

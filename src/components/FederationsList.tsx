@@ -30,7 +30,8 @@ export function FederationsList() {
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-4 text-sm">
               {f.contactEmail && <a className="inline-flex items-center gap-1.5 text-forest-700 hover:underline" href={`mailto:${f.contactEmail}`}><Mail size={14} /> {f.contactEmail}</a>}
-              <Link className="font-semibold text-forest-700 hover:underline" href={`/clubs?sport=${encodeURIComponent(f.sportId)}`}>Clubs in this sport</Link>
+              <Link className="font-semibold text-forest-700 hover:underline" href={`/federations/${encodeURIComponent(f.sportId)}`}>Branches &amp; leadership</Link>
+              <Link className="font-semibold text-forest-700 hover:underline" href={`/clubs?sport=${encodeURIComponent(f.sportId)}`}>Clubs</Link>
             </div>
           </li>
         ))}

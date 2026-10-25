@@ -134,16 +134,22 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
     reg_no = (d.org_reg_no or "").strip()
     if d.type in R.REG_NO_TYPES and not re.match(r"^[A-Za-z0-9][A-Za-z0-9 /._-]{2,39}$", reg_no):
         err(422, "Enter the organisation's registration number (Registrar of Societies, company or Sports Registrar certificate).")
+    parent_id = None
+    if d.type == "County Branch":
+        parent = db.get(Application, d.parent_id or "")
+        if not parent or parent.type != "Federation / Association" or parent.status != "Approved" or parent.sport != d.sport:
+            err(422, "Choose the verified national federation of this sport that your branch belongs to.")
+        parent_id = parent.id
     officials = None
-    if d.type == "Club":
+    if d.type in R.OFFICIAL_TYPES:
         officials = R.norm_officials(d.club_officials)
         roles = R.role_by_id()
         if len(officials) > 30 or any(roles.get(x["role"], {}).get("group") != "Club leadership and administration" for x in officials):
-            err(422, "Choose club officials from the leadership roles list.")
+            err(422, "Choose officials from the leadership roles list.")
         named = {x["role"] for x in officials if len(x["name"]) >= 3}
         for need in R.REQUIRED_OFFICIALS:
             if need not in named:
-                err(422, f"Name the club's {roles[need]['name']}.")
+                err(422, f"Name the {roles[need]['name']}.")
         for x in officials:
             if x["phone"] and not PHONE.match(re.sub(r"\s", "", x["phone"])):
                 err(422, f"Check the phone number for {x['name']}.")
@@ -200,7 +206,7 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
         if not db.get(Application, aid):
             break
     a = Application(
-        id=aid, owner_id=owner.id, club_id=club_id, type=d.type, name=d.name.strip(), id_no=d.id_no.strip(),
+        id=aid, owner_id=owner.id, club_id=club_id, parent_id=parent_id, type=d.type, name=d.name.strip(), id_no=d.id_no.strip(),
         kra=d.kra.strip().upper(), phone=d.phone.strip(), email=d.email.strip().lower(), sport=d.sport,
         federation=the_federation(db, d.sport), level=d.level, club_name=(d.club_name or "").strip(),
         officials=officials, role=role_id, sport_other=(d.sport_other or "").strip()[:80] if d.sport == "other" else "",
@@ -245,6 +251,7 @@ class RegisterIn(In):
     role: str | None = None
     sport_other: str = ""
     org_reg_no: str = ""
+    parent_id: str | None = None
     public_listing: bool = False
     has_contract: str | None = None
     notes: str = ""
@@ -624,6 +631,41 @@ def public_clubs(q: str = "", county: str = "", sport: str = "", db: Session = D
     return {"rows": out[:500], "total": len(out)}
 
 
+@router.get("/federations/{sport_id}")
+def public_federation(sport_id: str, db: Session = Depends(get_db)):
+    """A sport's federation of record, its verified national body and county branches, with leadership (role and name only)."""
+    fed = db.get(Federation, sport_id)
+    if not fed:
+        err(404, "Federation not found.")
+    roles = R.role_by_id()
+
+    def card(x: Application) -> dict:
+        return {"id": x.id, "name": x.club_name or x.name, "county": x.county, "subCounty": x.sub_county, "ward": x.ward,
+                "certificateNo": x.cert_no,
+                "officials": [{"role": roles.get(o["role"], {}).get("name", o["role"]), "name": o["name"]}
+                              for o in R.norm_officials(x.officials) if o.get("name")]}
+
+    national = db.scalars(select(Application).where(
+        Application.type == "Federation / Association", Application.sport == sport_id, Application.status == "Approved")
+        .order_by(Application.created_at)).first()
+    branches = db.scalars(select(Application).where(
+        Application.type == "County Branch", Application.parent_id == (national.id if national else "-"),
+        Application.status == "Approved").order_by(Application.county, Application.club_name)).all() if national else []
+    clubs = len(db.scalars(select(Application.id).where(
+        Application.type == "Club", Application.sport == sport_id, Application.status == "Approved")).all())
+    return {"federation": {"sportId": fed.sport_id, "sportName": fed.sport_name, "name": fed.name, "status": fed.status,
+                           "contactEmail": fed.contact_email},
+            "national": card(national) if national else None, "branches": [card(b) for b in branches], "clubs": clubs}
+
+
+@router.get("/federations/{sport_id}/national")
+def national_bodies(sport_id: str, db: Session = Depends(get_db)):
+    """Verified national federations a county branch can register under."""
+    rows = db.scalars(select(Application).where(Application.type == "Federation / Association", Application.sport == sport_id,
+                                                Application.status == "Approved").order_by(Application.club_name)).all()
+    return {"rows": [{"id": a.id, "name": a.club_name or a.name} for a in rows]}
+
+
 @router.get("/clubs/{cid}")
 def public_club(cid: str, db: Session = Depends(get_db)):
     """One verified club and the players who agreed to be listed (name, role and sport only)."""
@@ -639,14 +681,14 @@ def public_club(cid: str, db: Session = Depends(get_db)):
                      "certificateNo": c.cert_no},
             # role and name only: phone and email stay private
             "officials": [{"role": roles.get(o["role"], {}).get("name", o["role"]), "name": o["name"]}
-                          for o in R.norm_officials(c.officials) if o.get("name")] if c.type == "Club" else [],
+                          for o in R.norm_officials(c.officials) if o.get("name")] if c.type in R.OFFICIAL_TYPES else [],
             "players": [{"name": p.name, "role": (roles.get(p.role or "") or {}).get("name") or "Athlete/Player",
                          "sport": p.sport} for p in roster]}
 
 
 # ───────────── directory (restricted) ─────────────
 TABS = {"players": ["Player / Sportsperson"],
-        "clubs": ["Club", "Academy", "Sports Business", "Facility Operator", "Event Organiser", "Federation / Association"],
+        "clubs": ["Club", "Academy", "Sports Business", "Facility Operator", "Event Organiser", "Federation / Association", "County Branch"],
         "teams": ["Technical Team", "Coach"], "scouts": ["Scout", "Sports Agent / Manager"],
         "officials": ["Match / Competition Official"], "support": ["Health & Welfare Staff", "Operations & Admin Staff"]}
 
@@ -733,8 +775,12 @@ def perform_transition(db: Session, u: User, a: Application, action: str, note: 
         rule = evidence_rule(db)
         if rule_applies(rule, a) and a.status != "Endorsed" and count_media(db, a.id, "video") == 0:
             err(409, f"Cannot approve: a {a.level} player registering individually needs a trial video or federation endorsement.")
-        if a.type == "Club" and rule["clubDocuments"] and count_media(db, a.id, "document") == 0:
-            err(409, "Cannot approve: the club has not uploaded its constitution or registration documents.")
+        if a.type in R.OFFICIAL_TYPES and rule["clubDocuments"] and count_media(db, a.id, "document") == 0:
+            err(409, "Cannot approve: the organisation has not uploaded its constitution or registration documents.")
+        if a.type == "County Branch":
+            parent = db.get(Application, a.parent_id or "")
+            if not parent or parent.status != "Approved":
+                err(409, "Cannot approve: the national federation is not verified.")
     a.status, a.updated_at = to, now()
     if to == "Approved":
         if not a.cert_no:
@@ -745,6 +791,12 @@ def perform_transition(db: Session, u: User, a: Application, action: str, note: 
             a.cert_no = c
         if not a.expires_at:
             a.expires_at = (date.today() + timedelta(days=C.CERT_VALID_DAYS)).isoformat()
+    if to == "Approved" and a.type == "Federation / Association" and a.sport in R.SPORT_IDS and a.sport != "other":
+        # the verified national federation becomes the sport's federation of record
+        fed = db.get(Federation, a.sport)
+        if fed:
+            fed.name, fed.status, fed.updated_at = (a.club_name or a.name), "Recognised", now()
+            fed.contact_email = fed.contact_email or a.email
     if action in ("reopen", "reinstate"):
         a.appeal = None
     label = "Reinstated" if action == "reinstate" else {"info_received": "Information received", "reopen": "Reopened after appeal"}.get(action, to)

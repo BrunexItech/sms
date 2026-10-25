@@ -13,6 +13,7 @@ export const STAKEHOLDER_TYPES = [
   "Facility Operator",
   "Event Organiser",
   "Federation / Association",
+  "County Branch",
 ] as const;
 export type StakeholderType = (typeof STAKEHOLDER_TYPES)[number];
 
@@ -131,6 +132,8 @@ export interface Application {
   sportOther?: string;
   /** Registrar of Societies / company / Sports Registrar certificate number (organisations). */
   orgRegNo?: string;
+  /** County branches: the national federation they belong to. */
+  parentId?: string | null;
   /** Player agreed (or guardian agreed) to appear on the club's public page. */
   publicListed?: boolean;
   hasContract?: "Yes" | "No";

@@ -1,5 +1,6 @@
 import { PageHero, SiteShell } from "@/components/SiteShell";
 import { PHOTO_CREDITS } from "@/data/photo-credits";
+import { HERO_SLIDES } from "@/data/hero-slides";
 import { SPORT_BY_ID } from "@/data/sports";
 
 export const metadata = { title: "Credits | National Sports Registry, Kenya" };
@@ -17,7 +18,15 @@ export default function Page() {
             <ul className="mt-3 space-y-2 text-sm text-ink-2">
               <li>Map tiles and facility records © <a className="font-semibold text-forest-700 underline" href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> (ODbL).</li>
               <li>Counties, sub-counties and wards: OCHA COD-AB Kenya via <a className="font-semibold text-forest-700 underline" href="https://data.humdata.org/dataset/cod-ab-ken">HDX</a> (CC BY-IGO).</li>
-              <li>The hero image and crest are taken from the Ministry&apos;s design mockup supplied for this prototype and should be replaced with licensed or official artwork before launch.</li>
+              <li>The crest is taken from the Ministry&apos;s design mockup supplied for this prototype and should be replaced with official artwork before launch.</li>
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-line bg-white p-6 sm:p-8">
+            <h2 className="text-xl font-extrabold text-forest-900">Home page photographs (Wikimedia Commons)</h2>
+            <ul className="mt-3 space-y-2 text-sm text-ink-2">
+              {HERO_SLIDES.map((h) => (
+                <li key={h.sport}><b>{h.label}</b>: {h.credit.author}, {h.credit.license}. <a className="font-semibold text-forest-700 underline" href={h.credit.page} target="_blank" rel="noreferrer">File page</a></li>
+              ))}
             </ul>
           </div>
           <div className="rounded-2xl border border-line bg-white p-6 sm:p-8">

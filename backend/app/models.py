@@ -41,6 +41,7 @@ class Application(Base):
     id: Mapped[str] = mapped_column(String, primary_key=True)
     owner_id: Mapped[str | None] = mapped_column(String, index=True, nullable=True)
     club_id: Mapped[str | None] = mapped_column(String, index=True, nullable=True)
+    parent_id: Mapped[str | None] = mapped_column(String, index=True, nullable=True)  # county branch -> national federation
     type: Mapped[str] = mapped_column(String, index=True)
     name: Mapped[str] = mapped_column(String)
     id_no: Mapped[str] = mapped_column(String, default="", index=True)

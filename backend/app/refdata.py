@@ -82,19 +82,22 @@ STAKEHOLDER_TYPES = [
     "Player / Sportsperson", "Club", "Academy", "Technical Team", "Coach", "Scout",
     "Match / Competition Official", "Health & Welfare Staff", "Operations & Admin Staff",
     "Sports Agent / Manager", "Sports Business", "Facility Operator", "Event Organiser", "Federation / Association",
+    "County Branch",
 ]
 # Individuals who register in a specific role from the role catalogue.
 PERSONNEL_TYPES = {"Technical Team", "Coach", "Scout", "Match / Competition Official", "Health & Welfare Staff", "Operations & Admin Staff"}
 # Legal entities that must quote the certificate they were registered under.
-REG_NO_TYPES = {"Club", "Academy", "Federation / Association"}
+REG_NO_TYPES = {"Club", "Academy", "Federation / Association", "County Branch"}
+# Organisations that must name a president/chair, secretary and treasurer.
+OFFICIAL_TYPES = {"Club", "Federation / Association", "County Branch"}
 ORG_TYPES = {"Club", "Academy", "Technical Team", "Sports Business", "Facility Operator", "Event Organiser",
-             "Federation / Association"}
+             "Federation / Association", "County Branch"}
 LEVELS = ["Professional", "Semi-Professional", "Amateur", "Youth / Junior", "Community"]
 FACILITY_TYPES = ["Stadium", "Football Pitch", "Athletics Track", "Indoor Arena", "Swimming Pool", "Basketball Court",
                   "Rugby Ground", "Tennis Court", "Volleyball Court", "Cricket Ground", "Golf Course", "Sports Centre",
                   "Gym / Fitness Centre", "Sports Pitch", "Other"]
 CONDITIONS = ["Excellent", "Good", "Fair", "Poor", "Under renovation"]
-DEFAULT_FEES = {t: (2000 if t == "Club" else 500) for t in STAKEHOLDER_TYPES}
+DEFAULT_FEES = {t: {"Club": 2000, "County Branch": 2000, "Federation / Association": 5000}.get(t, 500) for t in STAKEHOLDER_TYPES}
 
 
 @lru_cache

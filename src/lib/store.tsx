@@ -62,6 +62,7 @@ export interface RegisterDraft {
   level: string;
   clubName: string;
   orgRegNo?: string;
+  parentId?: string;
   clubOfficials?: ClubOfficial[];
   publicListing?: boolean;
   role?: string;

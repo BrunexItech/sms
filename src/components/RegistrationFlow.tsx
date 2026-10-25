@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Info } from "lucide-react";
 import { SPORT_BY_ID } from "@/data/sports";
 import { emptyPlace } from "@/lib/admin";
+import { api } from "@/lib/api";
 import { errText, useStore } from "@/lib/store";
 import {
   COMPETITION_LEVELS,
@@ -28,7 +29,17 @@ import { PayBox } from "./PayBox";
 
 const STEPS = ["Details", "Location", "Sports Details", "Review"] as const;
 
-const REG_NO_TYPES: StakeholderType[] = ["Club", "Academy", "Federation / Association"];
+const REG_NO_TYPES: StakeholderType[] = ["Club", "Academy", "Federation / Association", "County Branch"];
+/** Organisations that name a president, secretary and treasurer. */
+const OFFICIAL_TYPES: StakeholderType[] = ["Club", "Federation / Association", "County Branch"];
+/** Entry points shown first; every other type sits under "Coach, official or other". */
+const ENTRY: [StakeholderType, string][] = [
+  ["Federation / Association", "A national federation"],
+  ["County Branch", "A county branch"],
+  ["Club", "A club"],
+  ["Player / Sportsperson", "A player"],
+];
+const isEntry = (t: StakeholderType) => ENTRY.some(([e]) => e === t);
 
 export const ORG_TYPES: StakeholderType[] = [
   "Club",
@@ -38,6 +49,7 @@ export const ORG_TYPES: StakeholderType[] = [
   "Facility Operator",
   "Event Organiser",
   "Federation / Association",
+  "County Branch",
 ];
 
 export const DEMO_OTP = "123456";
@@ -57,6 +69,7 @@ interface Form {
   confirm: string;
   clubName: string;
   orgRegNo: string;
+  parentId: string;
   officials: ClubOfficial[];
   role: string;
   sportOther: string;
@@ -107,12 +120,13 @@ function validate(step: number, f: Form, needPassword = false): Errors {
   }
   if (step === 3) {
     if (!f.sport) e.sport = "Choose a sport.";
-    if (f.type === "Club") {
+    if (OFFICIAL_TYPES.includes(f.type)) {
       for (const need of REQUIRED_OFFICIALS) {
         const o = f.officials.find((x) => x.role === need);
-        if (!o || o.name.trim().length < 3) e[`official-${need}`] = "Required for clubs.";
+        if (!o || o.name.trim().length < 3) e[`official-${need}`] = "Required.";
       }
     }
+    if (f.type === "County Branch" && !f.parentId) e.parentId = "Choose the national federation your branch belongs to.";
     if (PERSONNEL_TYPES.includes(f.type) && !f.role) e.role = "Choose your role from the list.";
     if (f.sport === "other" && f.sportOther.trim().length < 3) e.sportOther = "Tell us the name of the sport. The Registrar will review it.";
     if (f.type === "Player / Sportsperson") {
@@ -152,7 +166,7 @@ export function RegistrationFlow({
   const top = useRef<HTMLDivElement>(null);
 
   const [form, setForm] = useState<Form>({
-    type: asParam === "club" ? "Club" : "Player / Sportsperson",
+    type: ({ club: "Club", federation: "Federation / Association", branch: "County Branch" } as Record<string, StakeholderType>)[asParam ?? ""] ?? "Player / Sportsperson",
     name: "",
     idNo: "",
     kra: "",
@@ -165,6 +179,7 @@ export function RegistrationFlow({
     confirm: "",
     clubName: "",
     orgRegNo: "",
+    parentId: "",
     officials: DEFAULT_OFFICIALS,
     role: "",
     sportOther: "",
@@ -192,6 +207,16 @@ export function RegistrationFlow({
   const federation = sport ? federationName(sport) : "";
   const fee = state.fees[form.type];
   const isOrg = ORG_TYPES.includes(form.type);
+  const [nationals, setNationals] = useState<{ id: string; name: string }[] | null>(null);
+  useEffect(() => {
+    const sp = form.sport || preset;
+    if (form.type !== "County Branch" || !sp) return;
+    let off = false;
+    api<{ rows: { id: string; name: string }[] }>(`/federations/${encodeURIComponent(sp)}/national`)
+      .then((r) => !off && setNationals(r.rows))
+      .catch(() => !off && setNationals([]));
+    return () => { off = true; };
+  }, [form.type, form.sport, preset]);
 
   const go = (n: number) => {
     if (n > step) {
@@ -222,7 +247,8 @@ export function RegistrationFlow({
         level: form.level,
         clubName: form.clubName.trim(),
         orgRegNo: form.orgRegNo.trim(),
-        clubOfficials: form.type === "Club" ? form.officials.filter((o) => o.name.trim()).map((o) => ({ ...o, name: o.name.trim() })) : undefined,
+        parentId: form.type === "County Branch" ? form.parentId : undefined,
+        clubOfficials: OFFICIAL_TYPES.includes(form.type) ? form.officials.filter((o) => o.name.trim()).map((o) => ({ ...o, name: o.name.trim() })) : undefined,
         role: PERSONNEL_TYPES.includes(form.type) || form.type === "Player / Sportsperson" ? form.role || undefined : undefined,
         sportOther: sport === "other" ? form.sportOther.trim() : undefined,
         hasContract: form.hasContract || undefined,
@@ -303,26 +329,26 @@ export function RegistrationFlow({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <span className="mb-1.5 block text-[13px] font-semibold">I am registering as</span>
-                <div role="radiogroup" className="grid grid-cols-3 gap-2">
-                  {([["Player / Sportsperson", "A player"], ["Club", "A club"]] as const).map(([t, label]) => (
-                    <button key={t} type="button" role="radio" aria-checked={form.type === t} onClick={() => setForm((f) => ({ ...f, type: t, role: "" }))}
+                <div role="radiogroup" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                  {ENTRY.map(([t, label]) => (
+                    <button key={t} type="button" role="radio" aria-checked={form.type === t} onClick={() => { setForm((f) => ({ ...f, type: t, role: "", parentId: "" })); setErrors({}); }}
                       className={`rounded-xl border px-3 py-2.5 text-sm font-bold transition ${form.type === t ? "border-forest-700 bg-forest-100 text-forest-900" : "border-line bg-white text-ink-2 hover:border-forest-700/50"}`}>{label}</button>
                   ))}
-                  <button type="button" role="radio" aria-checked={form.type !== "Player / Sportsperson" && form.type !== "Club"} onClick={() => setForm((f) => ({ ...f, type: f.type === "Player / Sportsperson" || f.type === "Club" ? "Coach" : f.type, role: "" }))}
-                    className={`rounded-xl border px-3 py-2.5 text-sm font-bold transition ${form.type !== "Player / Sportsperson" && form.type !== "Club" ? "border-forest-700 bg-forest-100 text-forest-900" : "border-line bg-white text-ink-2 hover:border-forest-700/50"}`}>Coach, official or other</button>
+                  <button type="button" role="radio" aria-checked={!isEntry(form.type)} onClick={() => { setForm((f) => ({ ...f, type: isEntry(f.type) ? "Coach" : f.type, role: "", parentId: "" })); setErrors({}); }}
+                    className={`rounded-xl border px-3 py-2.5 text-sm font-bold transition ${!isEntry(form.type) ? "border-forest-700 bg-forest-100 text-forest-900" : "border-line bg-white text-ink-2 hover:border-forest-700/50"}`}>Coach, official or other</button>
                 </div>
-                {form.type !== "Player / Sportsperson" && form.type !== "Club" && (
+                {!isEntry(form.type) && (
                   <select aria-label="Type" className={`${inputCls} mt-2`} value={form.type}
                     onChange={(e) => { setForm((f) => ({ ...f, type: e.target.value as StakeholderType, role: "" })); setErrors({}); }}>
-                    {STAKEHOLDER_TYPES.filter((t) => t !== "Player / Sportsperson" && t !== "Club").map((t) => <option key={t}>{t}</option>)}
+                    {STAKEHOLDER_TYPES.filter((t) => !isEntry(t)).map((t) => <option key={t}>{t}</option>)}
                   </select>
                 )}
               </div>
               {isOrg && (
                 <fieldset className="grid gap-4 rounded-xl border border-line bg-bone p-4 sm:col-span-2 sm:grid-cols-2">
                   <legend className="px-2 text-[13px] font-semibold">Organisation</legend>
-                  <Field label={`${form.type === "Club" ? "Club" : "Organisation"} name`} required error={errors.clubName} className="sm:col-span-2" hint="Names are checked for uniqueness before approval.">
-                    <input className={inputCls} placeholder="e.g. Kibera Stars FC" value={form.clubName} onChange={(e) => set("clubName", e.target.value)} />
+                  <Field label={`${form.type === "Club" ? "Club" : form.type === "Federation / Association" ? "Federation" : form.type === "County Branch" ? "Branch" : "Organisation"} name`} required error={errors.clubName} className="sm:col-span-2" hint="Names are checked for uniqueness before approval.">
+                    <input className={inputCls} placeholder={form.type === "Federation / Association" ? "e.g. Kenya Volleyball Federation" : form.type === "County Branch" ? "e.g. Nakuru County Volleyball Association" : "e.g. Kibera Stars FC"} value={form.clubName} onChange={(e) => set("clubName", e.target.value)} />
                   </Field>
                   <Field label="Registration number" required={REG_NO_TYPES.includes(form.type)} error={errors.orgRegNo}
                     hint="From your Registrar of Societies, company or Sports Registrar certificate.">
@@ -408,6 +434,7 @@ export function RegistrationFlow({
                   value={sport ? [sport] : []}
                   onChange={(v) => {
                     set("sport", v[0] ?? "");
+                    set("parentId", "");
                   }}
                 />
                 {errors.sport && <span className="mt-1.5 block text-xs font-medium text-kenya-red">{errors.sport}</span>}
@@ -428,7 +455,17 @@ export function RegistrationFlow({
                   optional={form.type === "Player / Sportsperson"} />
               )}
 
-              {form.type === "Club" && (
+              {form.type === "County Branch" && (
+                <Field label="National federation" required error={errors.parentId} className="sm:col-span-2"
+                  hint={!sport ? "Choose the sport first." : nationals && nationals.length === 0 ? "No national federation is verified for this sport yet. The federation must register and be verified first." : "Your branch is endorsed by this federation."}>
+                  <select className={inputCls} value={form.parentId} onChange={(e) => set("parentId", e.target.value)} disabled={!nationals?.length}>
+                    <option value="">{nationals?.length ? "Select the national federation" : "None available"}</option>
+                    {(nationals ?? []).map((n) => <option key={n.id} value={n.id}>{n.name}</option>)}
+                  </select>
+                </Field>
+              )}
+
+              {OFFICIAL_TYPES.includes(form.type) && (
                 <OfficialsEditor roles={state.roles} value={form.officials} onChange={(v) => set("officials", v)} errors={errors} />
               )}
 
@@ -576,7 +613,7 @@ function Success({ app: first, compact }: { app: Application; compact: boolean }
         {app.payment.status === "Paid"
           ? "It now waits for verification by your County Sports Office, your federation and the Sports Registrar."
           : "Pay the registration fee below so verification can begin."}{" "}
-        {app.type === "Club" ? "Once your club is verified you can register your players." : app.type === "Player / Sportsperson" ? "Optional: add a profile photo or trial video from My account whenever you like." : ""}
+        {app.type === "Club" ? "Once your club is verified you can register your players." : app.type === "Federation / Association" ? "Once verified you become the federation of record for your sport, and county branches can register under you." : app.type === "County Branch" ? "Your national federation endorses the branch before the Registrar verifies it." : app.type === "Player / Sportsperson" ? "Optional: add a profile photo or trial video from My account whenever you like." : ""}
       </p>
       <dl className="mt-6 grid gap-3 rounded-xl border border-dashed border-forest-700/40 bg-forest-100/50 p-4 text-left text-sm sm:grid-cols-2">
         <div><dt className="text-xs uppercase tracking-wider text-ink-3">Reference</dt><dd className="mt-0.5 font-mono font-semibold">{app.id}</dd></div>
