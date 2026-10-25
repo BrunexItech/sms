@@ -290,10 +290,10 @@ em {
 }
 
 /* Home hero slideshow */
-@keyframes hero-zoom { from { transform: scale(1.0); } to { transform: scale(1.07); } }
+@keyframes hero-drift { from { transform: scale(1.04) translate3d(1.5%, 0, 0); } to { transform: scale(1.14) translate3d(-1.5%, 0, 0); } }
 @keyframes hero-progress { from { width: 0; } to { width: 100%; } }
-@keyframes hero-copy-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
-.hero-zoom { animation: hero-zoom 9s ease-out forwards; }
+@keyframes hero-rise { from { opacity: 0; transform: translate3d(0, 22px, 0); } to { opacity: 1; transform: none; } }
+.hero-drift { animation: hero-drift 9s ease-out forwards; }
 .hero-progress { animation-name: hero-progress; animation-timing-function: linear; animation-fill-mode: forwards; }
-.hero-copy { animation: hero-copy-in 700ms cubic-bezier(.2,.7,.2,1) both; }
-@media (prefers-reduced-motion: reduce) { .hero-zoom, .hero-copy { animation: none; } .hero-progress { animation: none; width: 100%; } }
+.hero-rise { opacity: 0; animation: hero-rise 800ms cubic-bezier(.2,.7,.2,1) forwards; }
+@media (prefers-reduced-motion: reduce) { .hero-drift { animation: none; } .hero-rise { animation: none; opacity: 1; } .hero-progress { animation: none; width: 100%; } }

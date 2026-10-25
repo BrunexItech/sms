@@ -52,7 +52,7 @@ export function FederationProfile({ sport }: { sport: string }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-leaf"><Landmark size={15} /> {SPORT_BY_ID[sport]?.name ?? data.federation.sportName}</p>
-                <h2 className="mt-1 text-3xl font-extrabold text-forest-900">{data.federation.name}</h2>
+                <h2 className="mt-1 text-3xl font-extrabold text-forest-900">{data.federation.name.split(";")[0].trim()}</h2>
               </div>
               <Pill>{data.national ? "Verified" : data.federation.status}</Pill>
             </div>

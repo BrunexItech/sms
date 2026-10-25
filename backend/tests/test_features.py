@@ -439,4 +439,6 @@ def test_federation_and_county_branch_hierarchy(client_factory, staff):
     branches = anon.get("/api/federations/volleyball").json()["branches"]
     assert [b["name"] for b in branches] == ["Nakuru Volleyball Association"]
     assert not any({"phone", "email"} & set(o) for o in branches[0]["officials"])
+    listed = anon.get("/api/branches?q=nakuru").json()
+    assert listed["total"] == 1 and listed["rows"][0]["sport"] == "volleyball" and "phone" not in listed["rows"][0]
     assert anon.get("/api/federations/nope").status_code == 404

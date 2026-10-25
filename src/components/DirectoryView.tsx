@@ -12,7 +12,7 @@ import { Pill } from "./ui/Pill";
 import { inputCls } from "./ui/Field";
 import { BlockLoader } from "./ui/Spinner";
 
-export type DirectoryTab = "players" | "clubs" | "teams" | "scouts" | "officials" | "support" | "facilities";
+export type DirectoryTab = "players" | "clubs" | "teams" | "scouts" | "officials" | "support" | "facilities" | "federations" | "branches";
 const PAGE = 15;
 const LABEL: Record<DirectoryTab, string> = {
   players: "Players",
@@ -22,7 +22,11 @@ const LABEL: Record<DirectoryTab, string> = {
   officials: "Officials & referees",
   support: "Health, welfare & operations",
   facilities: "Facilities",
+  federations: "National federations",
+  branches: "County branches",
 };
+/** Tabs of the staff register (the federation tabs belong to the public /federations page). */
+const STAFF_TABS: DirectoryTab[] = ["players", "clubs", "teams", "scouts", "officials", "support", "facilities"];
 
 interface Row {
   key: string;
@@ -39,10 +43,10 @@ interface Row {
 /** "public" shows only what anyone may see (clubs, facilities); "staff" is the full register inside the console. */
 const PUBLIC_TABS: DirectoryTab[] = ["clubs", "facilities"];
 
-export function DirectoryView({ initialTab = "players", scope = "staff" }: { initialTab?: DirectoryTab; scope?: "public" | "staff" }) {
+export function DirectoryView({ initialTab = "players", scope = "staff", tabs: tabsProp }: { initialTab?: DirectoryTab; scope?: "public" | "staff"; tabs?: DirectoryTab[] }) {
   const { state, admin } = useStore();
   const qs = useSearchParams();
-  const [tab, setTab] = useState<DirectoryTab>(scope === "public" && !PUBLIC_TABS.includes(initialTab) ? "clubs" : initialTab);
+  const [tab, setTab] = useState<DirectoryTab>(scope === "public" && !(tabsProp ?? PUBLIC_TABS).includes(initialTab) ? (tabsProp ?? PUBLIC_TABS)[0] : initialTab);
   const [q, setQ] = useState(qs.get("q") ?? "");
   const [county, setCounty] = useState("");
   const [sport, setSport] = useState(qs.get("sport") ?? "");
@@ -53,18 +57,18 @@ export function DirectoryView({ initialTab = "players", scope = "staff" }: { ini
   const [err, setErr] = useState("");
 
   const staffView = scope === "staff";
-  const tabs = staffView ? (Object.keys(LABEL) as DirectoryTab[]) : PUBLIC_TABS;
+  const tabs = staffView ? STAFF_TABS : (tabsProp ?? PUBLIC_TABS);
   const allowed = true;
 
   // Load people from the server (scoped to what this account may see), debounced for typing.
   useEffect(() => {
-    if (tab === "facilities" || !allowed) return;
-    const publicClubs = tab === "clubs" && !staffView;
+    if (tab === "facilities" || tab === "federations" || !allowed) return;
+    const publicClubs = (tab === "clubs" && !staffView) || tab === "branches";
     let cancelled = false;
     const t = setTimeout(() => {
       setLoading(true);
       const p = new URLSearchParams({ tab, q, county, sport, club: affil });
-      api<{ rows: { affiliation?: string; id: string; name: string; type: string; role?: string | null; sport: string; county: string; subCounty: string; ward: string; status: string; certificateNo: string | null }[]; total: number }>(publicClubs ? `/clubs?${p}` : `/directory?${p}`)
+      api<{ rows: { affiliation?: string; id: string; name: string; type: string; role?: string | null; sport: string; county: string; subCounty: string; ward: string; status: string; certificateNo: string | null }[]; total: number }>(tab === "branches" ? `/branches?${p}` : publicClubs ? `/clubs?${p}` : `/directory?${p}`)
         .then((r) => {
           if (cancelled) return;
           setErr("");
@@ -79,7 +83,7 @@ export function DirectoryView({ initialTab = "players", scope = "staff" }: { ini
               status: x.status,
               extra: x.certificateNo ?? "",
               affiliation: x.affiliation ?? "",
-              href: publicClubs ? `/clubs/${x.id}` : x.certificateNo ? `/verify?no=${encodeURIComponent(x.certificateNo)}` : "",
+              href: tab === "branches" ? `/federations/${x.sport}` : publicClubs ? `/clubs/${x.id}` : x.certificateNo ? `/verify?no=${encodeURIComponent(x.certificateNo)}` : "",
             })),
           });
         })
@@ -106,7 +110,19 @@ export function DirectoryView({ initialTab = "players", scope = "staff" }: { ini
       }));
   }, [tab, q, county, sport, state.facilities]);
 
-  const rows = tab === "facilities" ? facilityRows : (people?.rows ?? []);
+  const federationRows: Row[] = useMemo(() => {
+    if (tab !== "federations") return [];
+    const n = q.trim().toLowerCase();
+    return state.federations
+      .filter((f) => (!sport || f.sportId === sport) && (!n || `${f.name} ${f.sportName}`.toLowerCase().includes(n)))
+      .map((f) => ({
+        key: f.sportId, name: f.name.split(";")[0].trim(), kind: "National federation", sport: f.sportName, place: "National",
+        status: f.status === "Recognised" ? "Recognised" : "To be confirmed", extra: f.contactEmail, affiliation: "",
+        href: `/federations/${encodeURIComponent(f.sportId)}`,
+      }));
+  }, [tab, q, sport, state.federations]);
+
+  const rows = tab === "facilities" ? facilityRows : tab === "federations" ? federationRows : (people?.rows ?? []);
   const pages = Math.max(1, Math.ceil(rows.length / PAGE));
   const view = rows.slice(page * PAGE, page * PAGE + PAGE);
   const reset = (fn: () => void) => {
@@ -121,7 +137,7 @@ export function DirectoryView({ initialTab = "players", scope = "staff" }: { ini
           {tabs.map((t) => (
             <button
               key={t}
-              onClick={() => reset(() => { setTab(t); setPeople(null); setAffil(""); })}
+              onClick={() => reset(() => { setTab(t); setPeople(null); setAffil(""); if (t === "federations") setCounty(""); })}
               aria-pressed={tab === t}
               className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-bold transition ${tab === t ? "bg-forest-800 text-white" : "bg-bone text-ink-2 hover:bg-forest-100"}`}
             >
@@ -132,15 +148,17 @@ export function DirectoryView({ initialTab = "players", scope = "staff" }: { ini
 
         {(
           <>
-            <div className={`mt-5 grid gap-3 ${tab === "players" && staffView ? "md:grid-cols-[1fr_200px_200px_200px]" : "md:grid-cols-[1fr_220px_200px]"}`}>
+            <div className={`mt-5 grid gap-3 ${tab === "players" && staffView ? "md:grid-cols-[1fr_200px_200px_200px]" : tab === "federations" ? "md:grid-cols-[1fr_260px]" : "md:grid-cols-[1fr_220px_200px]"}`}>
               <div className="relative">
                 <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3" />
                 <input className={`${inputCls} pl-10`} placeholder="Search names, clubs, sports, places…" value={q} onChange={(e) => reset(() => setQ(e.target.value))} />
               </div>
-              <select className={inputCls} value={county} onChange={(e) => reset(() => setCounty(e.target.value))} aria-label="County">
-                <option value="">All counties</option>
-                {admin.counties.map((c) => <option key={c.id} value={c.id}>{c.n}</option>)}
-              </select>
+              {tab !== "federations" && (
+                <select className={inputCls} value={county} onChange={(e) => reset(() => setCounty(e.target.value))} aria-label="County">
+                  <option value="">All counties</option>
+                  {admin.counties.map((c) => <option key={c.id} value={c.id}>{c.n}</option>)}
+                </select>
+              )}
               <select className={inputCls} value={sport} onChange={(e) => reset(() => setSport(e.target.value))} aria-label="Sport">
                 <option value="">Any sport</option>
                 {SPORTS.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -155,17 +173,33 @@ export function DirectoryView({ initialTab = "players", scope = "staff" }: { ini
             </div>
 
             {err && <p role="alert" className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-semibold text-kenya-red-deep">{err}</p>}
-            {loading && !people && tab !== "facilities" ? (
+            {loading && !people && tab !== "facilities" && tab !== "federations" ? (
               <BlockLoader label="Loading the register" />
             ) : (
-              <div className="mt-5 overflow-x-auto">
+              <>
+              <ul className="mt-5 divide-y divide-line/70 md:hidden" role="list">
+                {view.map((r) => (
+                  <li key={r.key} className="py-3.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="min-w-0 font-semibold">{r.href ? <Link href={r.href} className="hover:text-forest-700 hover:underline">{r.name}</Link> : r.name}</p>
+                      <Pill>{r.status}</Pill>
+                    </div>
+                    <p className="mt-1 text-[13px] text-ink-2">{[r.kind, r.sport].filter(Boolean).join(" · ")}</p>
+                    {r.place && <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink-3"><MapPin size={13} className="shrink-0" /> {r.place}</p>}
+                    {(tab === "players" && r.affiliation) && <p className="mt-0.5 text-[13px] text-ink-3">Club: {r.affiliation}</p>}
+                    {r.extra && <p className="mt-0.5 break-all font-mono text-[11px] text-ink-3">{r.extra}</p>}
+                  </li>
+                ))}
+                {view.length === 0 && <li className="py-12 text-center text-ink-3"><MapPin className="mx-auto mb-2" size={22} />No matching records.</li>}
+              </ul>
+              <div className="mt-5 hidden overflow-x-auto md:block">
                 <table className="w-full min-w-[720px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-line text-xs uppercase tracking-wider text-ink-3">
                       <th className="py-3 pr-4 font-semibold">Name</th><th className="py-3 pr-4 font-semibold">{tab === "players" ? "Role" : "Type"}</th>
                       {tab === "players" && <th className="py-3 pr-4 font-semibold">Club</th>}
                       <th className="py-3 pr-4 font-semibold">Sport</th><th className="py-3 pr-4 font-semibold">Location</th>
-                      <th className="py-3 pr-4 font-semibold">Status</th><th className="py-3 font-semibold">{tab === "facilities" ? "ID" : "Certificate"}</th>
+                      <th className="py-3 pr-4 font-semibold">Status</th><th className="py-3 font-semibold">{tab === "facilities" ? "ID" : tab === "federations" ? "Contact" : "Certificate"}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -186,11 +220,12 @@ export function DirectoryView({ initialTab = "players", scope = "staff" }: { ini
                   </tbody>
                 </table>
               </div>
+              </>
             )}
 
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-ink-2">
               <p className="flex items-center gap-2 text-xs text-ink-3">
-                <ShieldCheck size={14} /> {tab === "facilities" || (tab === "clubs" && !staffView) ? "Public register of verified organisations. No personal data or rosters are shown." : "Restricted to your scope. ID, KRA PIN, phone and email are never shown here."}
+                <ShieldCheck size={14} /> {tab === "facilities" || tab === "federations" || tab === "branches" || (tab === "clubs" && !staffView) ? "Public register of verified organisations. No personal data or rosters are shown." : "Restricted to your scope. ID, KRA PIN, phone and email are never shown here."}
               </p>
               <div className="flex items-center gap-2">
                 <span>{rows.length === 0 ? 0 : page * PAGE + 1}–{Math.min(rows.length, page * PAGE + PAGE)} of {rows.length.toLocaleString()}</span>

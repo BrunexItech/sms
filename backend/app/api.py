@@ -658,6 +658,19 @@ def public_federation(sport_id: str, db: Session = Depends(get_db)):
             "national": card(national) if national else None, "branches": [card(b) for b in branches], "clubs": clubs}
 
 
+@router.get("/branches")
+def public_branches(q: str = "", county: str = "", sport: str = "", db: Session = Depends(get_db)):
+    """Verified county branches of national federations (public, no personal data)."""
+    rows = db.scalars(select(Application).where(Application.type == "County Branch", Application.status == "Approved")
+                      .order_by(Application.county, Application.club_name)).all()
+    needle = q.strip().lower()
+    out = [{"id": a.id, "name": a.club_name or a.name, "type": "County Branch", "sport": a.sport, "county": a.county,
+            "countyId": a.county_id, "subCounty": a.sub_county, "ward": a.ward, "certificateNo": a.cert_no, "status": "Approved"}
+           for a in rows if (not county or a.county_id == county) and (not sport or a.sport == sport)
+           and (not needle or needle in f"{a.club_name} {a.name} {a.county} {a.sport}".lower())]
+    return {"rows": out[:500], "total": len(out)}
+
+
 @router.get("/federations/{sport_id}/national")
 def national_bodies(sport_id: str, db: Session = Depends(get_db)):
     """Verified national federations a county branch can register under."""
