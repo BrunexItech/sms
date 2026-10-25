@@ -51,7 +51,7 @@ export function FacilityMap() {
         <Reveal className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="eyebrow text-gold">Coverage by county</p>
-            <h2 className="mt-3 max-w-2xl text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl">
+            <h2 className="mt-3 max-w-2xl text-2xl font-bold leading-[1.08] tracking-tight sm:text-3xl">
               Where Kenya&apos;s facilities <em className="text-gold">are.</em>
             </h2>
           </div>
@@ -146,7 +146,7 @@ export function FacilityMap() {
             <div className="flex h-full flex-col overflow-hidden rounded-2xl bg-paper text-ink">
               <div className="border-b border-line p-6">
                 <p className="eyebrow text-kenya-red">County register</p>
-                <h3 className="font-display mt-1.5 text-3xl font-medium">{selectedCounty?.name ?? "Select a county"}</h3>
+                <h3 className="font-display mt-1.5 text-2xl font-medium">{selectedCounty?.name ?? "Select a county"}</h3>
                 <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
                   {[
                     ["Facilities", inCounty.length],
@@ -155,7 +155,7 @@ export function FacilityMap() {
                   ].map(([l, v]) => (
                     <div key={l} className="rounded-2xl bg-bone px-4 py-3">
                       <p className="text-[11px] uppercase tracking-wider text-ink-3">{l}</p>
-                      <p className="font-display mt-0.5 text-2xl">{v}</p>
+                      <p className="font-display mt-0.5 text-xl">{v}</p>
                     </div>
                   ))}
                 </div>

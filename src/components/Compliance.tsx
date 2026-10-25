@@ -41,7 +41,7 @@ export function Compliance() {
         <div className="mx-auto grid max-w-7xl gap-14 px-5 lg:grid-cols-[0.8fr_1.2fr]">
           <Reveal>
             <p className="eyebrow text-kenya-red">Sports Act 2013</p>
-            <h2 className="font-display mt-3 text-4xl font-medium leading-[1.05] tracking-tight sm:text-5xl">
+            <h2 className="font-display mt-3 text-2xl font-medium leading-[1.05] tracking-tight sm:text-3xl">
               Compliance, <em className="text-forest-700">made plain.</em>
             </h2>
             <p className="mt-5 max-w-md text-ink-2">
@@ -49,7 +49,7 @@ export function Compliance() {
               requirements, so registration is complete the first time.
             </p>
             <div className="mt-8 hidden aspect-[4/3] max-w-md overflow-hidden rounded-3xl bg-forest-900 p-8 text-white lg:block">
-              <p className="font-display text-7xl font-medium text-gold">
+              <p className="font-display text-5xl font-medium text-gold">
                 2013
               </p>
               <p className="mt-3 max-w-[16rem] text-sm leading-relaxed text-white/70">
@@ -73,7 +73,7 @@ export function Compliance() {
                     </span>
                     <div className="flex-1">
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
-                        <h3 className="font-display text-xl font-medium">
+                        <h3 className="font-display text-lg font-medium">
                           {r.title}
                         </h3>
                         <span className="rounded-full border border-line px-2.5 py-0.5 text-[11px] font-medium text-ink-3">

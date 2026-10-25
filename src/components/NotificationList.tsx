@@ -12,7 +12,7 @@ export function NotificationList() {
   return (
     <section className="rounded-2xl border border-line bg-white p-5 print:hidden" aria-label="Notifications">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-extrabold text-forest-900">
+        <h2 className="flex items-center gap-2 text-base font-bold text-forest-900">
           <Bell size={18} /> Notifications {unread > 0 && <span className="rounded-full bg-kenya-red px-2 py-0.5 text-xs font-bold text-white">{unread} new</span>}
         </h2>
         {unread > 0 && <button onClick={markNotificationsRead} className="text-sm font-bold text-forest-700 underline underline-offset-4">Mark all read</button>}

@@ -52,7 +52,7 @@ export function FederationProfile({ sport }: { sport: string }) {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-leaf"><Landmark size={15} /> {SPORT_BY_ID[sport]?.name ?? data.federation.sportName}</p>
-                <h2 className="mt-1 text-3xl font-extrabold text-forest-900">{data.federation.name.split(";")[0].trim()}</h2>
+                <h2 className="mt-1 text-2xl font-bold text-forest-900">{data.federation.name.split(";")[0].trim()}</h2>
               </div>
               <Pill>{data.national ? "Verified" : data.federation.status}</Pill>
             </div>
@@ -64,7 +64,7 @@ export function FederationProfile({ sport }: { sport: string }) {
             </div>
             {data.national ? (
               <>
-                <h3 className="mt-5 flex items-center gap-2 text-sm font-extrabold text-forest-900"><UserCheck size={16} /> National leadership</h3>
+                <h3 className="mt-5 flex items-center gap-2 text-sm font-bold text-forest-900"><UserCheck size={16} /> National leadership</h3>
                 <Officials list={data.national.officials} />
               </>
             ) : (
@@ -80,7 +80,7 @@ export function FederationProfile({ sport }: { sport: string }) {
           </section>
 
           <section className="rounded-2xl border border-line bg-white p-6">
-            <h3 className="flex items-center gap-2 text-xl font-extrabold text-forest-900"><Building2 size={20} /> County branches <span className="text-base font-semibold text-ink-3">({data.branches.length})</span></h3>
+            <h3 className="flex items-center gap-2 text-lg font-bold text-forest-900"><Building2 size={20} /> County branches <span className="text-base font-semibold text-ink-3">({data.branches.length})</span></h3>
             {data.branches.length === 0 ? (
               <p className="mt-3 text-sm text-ink-3">{data.national ? "No county branch has been verified yet." : "County branches register once the national federation is verified."}</p>
             ) : (
@@ -89,7 +89,7 @@ export function FederationProfile({ sport }: { sport: string }) {
                   <li key={b.id} className="rounded-xl border border-line p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <p className="flex items-center gap-1.5 font-extrabold text-forest-900"><BadgeCheck size={16} className="text-leaf" /> {b.name}</p>
+                        <p className="flex items-center gap-1.5 font-bold text-forest-900"><BadgeCheck size={16} className="text-leaf" /> {b.name}</p>
                         <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-3"><MapPin size={13} /> {[b.address, b.ward, b.subCounty, b.county].filter(Boolean).join(", ")}</p>
                       </div>
                       <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-bold text-forest-800">{b.county} County</span>

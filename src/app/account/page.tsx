@@ -6,7 +6,7 @@ export const metadata = { title: "My registration | National Sports Registry, Ke
 export default function AccountPage() {
   return (
     <SiteShell>
-      <PageHero eyebrow="My account" title={<>Your registrations, <em className="text-gold">in one place.</em></>}>
+      <PageHero plain eyebrow="My account" title={<>Your registrations, <em className="text-gold">in one place.</em></>}>
         Track verification, pay fees, download certificates and manage your roster.
       </PageHero>
       <div className="bg-bone pt-12"><AccountView /></div>

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Bell, LayoutDashboard, LogIn, Menu, Phone, Search, UserRound, X } from "lucide-react";
+import { LayoutDashboard, LogIn, Menu, Phone, Search, UserRound, X } from "lucide-react";
 import { Logo } from "./Logo";
+import { NotificationBell } from "./NotificationBell";
 import { useLang } from "@/lib/i18n";
 import { useStore } from "@/lib/store";
 
@@ -22,9 +23,8 @@ const NAV: { href: string; label: string; sw: string }[] = [
 
 export function Header() {
   const { lang, setLang } = useLang();
-  const { user, member, state } = useStore();
+  const { user, member } = useStore();
   const nav = NAV;
-  const unread = state.notifications.filter((n) => !n.read).length;
   const path = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -124,12 +124,7 @@ export function Header() {
                 <Search size={19} />
               </button>
             )}
-            {(user || member) && (
-              <Link href={account.href} aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} className="relative hidden h-10 w-10 place-items-center rounded-lg text-forest-900 hover:bg-forest-100 sm:grid">
-                <Bell size={19} />
-                {unread > 0 && <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-kenya-red px-1 text-[10px] font-bold text-white">{unread}</span>}
-              </Link>
-            )}
+            {(user || member) && <NotificationBell allHref={account.href} />}
             <Link href={account.href} className="hidden items-center gap-2 rounded-lg border border-forest-900/30 px-5 py-2.5 text-sm font-semibold text-forest-900 transition hover:bg-forest-100 sm:flex">
               {account.icon} {account.label}
             </Link>

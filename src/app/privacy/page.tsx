@@ -4,7 +4,7 @@ export const metadata = { title: "Privacy notice | National Sports Registry, Ken
 
 const S = ({ t, children }: { t: string; children: React.ReactNode }) => (
   <section className="rounded-2xl border border-line bg-white p-6 sm:p-7">
-    <h2 className="text-lg font-extrabold text-forest-900">{t}</h2>
+    <h2 className="text-base font-bold text-forest-900">{t}</h2>
     <div className="mt-2 space-y-2 text-[15px] leading-relaxed text-ink-2">{children}</div>
   </section>
 );

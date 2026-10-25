@@ -33,7 +33,7 @@ export function ClubProfile({ id }: { id: string }) {
         <div className="grid gap-5">
           <section className="rounded-2xl border border-line bg-white p-6 shadow-[0_30px_60px_-45px_rgba(6,45,87,0.5)]">
             <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-leaf"><BadgeCheck size={15} /> Verified · {data.club.type}</p>
-            <h2 className="mt-1 text-3xl font-extrabold text-forest-900">{data.club.name}</h2>
+            <h2 className="mt-1 text-2xl font-bold text-forest-900">{data.club.name}</h2>
             <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
               <div><dt className="text-ink-3">Sport</dt><dd className="font-semibold">{SPORT_BY_ID[data.club.sport]?.name ?? data.club.sport}</dd></div>
               {data.club.level && <div><dt className="text-ink-3">Level</dt><dd className="font-semibold">{data.club.level}</dd></div>}
@@ -45,7 +45,7 @@ export function ClubProfile({ id }: { id: string }) {
 
           {data.officials.length > 0 && (
             <section className="rounded-2xl border border-line bg-white p-6">
-              <h3 className="flex items-center gap-2 text-xl font-extrabold text-forest-900"><UserCheck size={20} /> Club leadership</h3>
+              <h3 className="flex items-center gap-2 text-lg font-bold text-forest-900"><UserCheck size={20} /> Club leadership</h3>
               <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {data.officials.map((o, i) => (
                   <li key={i} className="rounded-lg border border-line px-4 py-3">
@@ -58,7 +58,7 @@ export function ClubProfile({ id }: { id: string }) {
           )}
 
           <section className="rounded-2xl border border-line bg-white p-6">
-            <h3 className="flex items-center gap-2 text-xl font-extrabold text-forest-900"><Users size={20} /> Registered players</h3>
+            <h3 className="flex items-center gap-2 text-lg font-bold text-forest-900"><Users size={20} /> Registered players</h3>
             {data.players.length === 0 ? (
               <p className="mt-3 text-sm text-ink-3">No players are listed publicly yet.</p>
             ) : (

@@ -92,7 +92,7 @@ export default function ConsoleHome() {
                 <Link href={q.href} className="group flex items-center justify-between gap-4 py-4">
                   <span className="text-[15px]">{q.label}</span>
                   <span className="flex items-center gap-3">
-                    <b className={`font-display text-3xl ${q.n > 0 ? "text-kenya-red" : "text-forest-700"}`}>{q.n}</b>
+                    <b className={`font-display text-2xl ${q.n > 0 ? "text-kenya-red" : "text-forest-700"}`}>{q.n}</b>
                     <ArrowRight size={16} className="text-ink-3 transition group-hover:translate-x-1" />
                   </span>
                 </Link>

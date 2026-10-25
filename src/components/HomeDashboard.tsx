@@ -50,7 +50,7 @@ export function HomeDashboard() {
               <div className="flex gap-3">
                 <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-forest-100 text-forest-800"><FileText size={26} strokeWidth={1.6} /></span>
                 <div>
-                  <h2 className="text-lg font-extrabold text-forest-900">Kenya Sports Act</h2>
+                  <h2 className="text-base font-bold text-forest-900">Kenya Sports Act</h2>
                   <p className="mt-0.5 text-[13px] text-ink-3">Access the Sports Act and relevant regulations.</p>
                 </div>
               </div>
@@ -62,16 +62,16 @@ export function HomeDashboard() {
             <section className="rounded-2xl border border-line bg-white p-4 shadow-[0_18px_40px_-28px_rgba(6,45,87,0.5)]">
               <div className="flex gap-3">
                 <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-forest-100 text-forest-800"><Wallet size={26} strokeWidth={1.6} /></span>
-                <h2 className="self-center text-lg font-extrabold text-forest-900">Registration Fees</h2>
+                <h2 className="self-center text-base font-bold text-forest-900">Registration Fees</h2>
               </div>
               <dl className="mt-3 divide-y divide-line text-sm">
                 <div className="flex items-baseline justify-between py-2.5">
                   <dt className="text-ink-2">Individual Registration</dt>
-                  <dd className="text-xl font-extrabold text-forest-900">KSh {individual.toLocaleString()}</dd>
+                  <dd className="text-lg font-bold text-forest-900">KSh {individual.toLocaleString()}</dd>
                 </div>
                 <div className="flex items-baseline justify-between py-2.5">
                   <dt className="text-ink-2">Club Registration</dt>
-                  <dd className="text-xl font-extrabold text-forest-900">KSh {club.toLocaleString()}</dd>
+                  <dd className="text-lg font-bold text-forest-900">KSh {club.toLocaleString()}</dd>
                 </div>
               </dl>
               <Link href="/payments" className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-leaf py-3 text-sm font-bold text-white shadow-[0_12px_22px_-12px_rgba(20,138,69,0.9)] transition hover:brightness-110">

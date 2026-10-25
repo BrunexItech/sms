@@ -34,7 +34,7 @@ export function Drawer({
       >
         <header className="flex items-start justify-between gap-4 border-b border-line px-6 py-5">
           <div>
-            <h2 className="font-display text-xl font-medium leading-tight">{title}</h2>
+            <h2 className="font-display text-lg font-medium leading-tight">{title}</h2>
             {subtitle && <p className="mt-1 text-xs text-ink-3">{subtitle}</p>}
           </div>
           <button onClick={onClose} aria-label="Close" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line hover:bg-bone">
@@ -62,7 +62,7 @@ export function Stat({
   return (
     <div className={`rounded-2xl border p-5 ${ring}`}>
       <p className="text-xs font-semibold uppercase tracking-wider text-ink-3">{label}</p>
-      <p className="font-display mt-2 text-4xl font-medium">{typeof value === "number" ? value.toLocaleString() : value}</p>
+      <p className="font-display mt-2 text-2xl font-medium">{typeof value === "number" ? value.toLocaleString() : value}</p>
       {hint && <p className="mt-1 text-xs text-ink-3">{hint}</p>}
     </div>
   );
@@ -93,7 +93,7 @@ export function Card({ title, action, children, className = "" }: { title?: stri
     <section className={`rounded-2xl border border-line bg-paper p-5 ${className}`}>
       {(title || action) && (
         <div className="mb-4 flex items-center justify-between gap-3">
-          {title && <h2 className="font-display text-lg font-medium">{title}</h2>}
+          {title && <h2 className="font-display text-base font-medium">{title}</h2>}
           {action}
         </div>
       )}
@@ -106,7 +106,7 @@ export function PageTitle({ title, sub, action }: { title: string; sub?: string;
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h1 className="font-display text-3xl font-medium tracking-tight">{title}</h1>
+        <h1 className="font-display text-2xl font-medium tracking-tight">{title}</h1>
         {sub && <p className="mt-1 text-sm text-ink-2">{sub}</p>}
       </div>
       {action}
@@ -128,7 +128,7 @@ export function downloadCsv(name: string, rows: (string | number)[][]) {
 export function NoAccess({ need }: { need: string }) {
   return (
     <div className="rounded-2xl border border-line bg-paper p-10 text-center">
-      <p className="font-display text-xl">Your role does not include this area.</p>
+      <p className="font-display text-lg">Your role does not include this area.</p>
       <p className="mt-1 text-sm text-ink-3">Required permission: {need}</p>
     </div>
   );

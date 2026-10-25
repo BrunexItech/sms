@@ -334,7 +334,7 @@ export function RegistrationFlow({
   if (user)
     return frame(
       <div className="p-6 text-center">
-        <h2 className="text-xl font-extrabold text-forest-900">You are signed in as staff</h2>
+        <h2 className="text-lg font-bold text-forest-900">You are signed in as staff</h2>
         <p className="mt-2 text-sm text-ink-2">Ministry and federation accounts review registrations; they cannot submit them. Sign out to register as an applicant.</p>
         <Link href="/console" className="mt-4 inline-block rounded-xl bg-forest-800 px-5 py-2.5 text-sm font-bold text-white">Open the console</Link>
       </div>,
@@ -345,7 +345,7 @@ export function RegistrationFlow({
   return frame(
     <div className="flex h-full flex-col">
       <div className={`${pad} pb-1 pt-5`}>
-        <h2 className="text-2xl font-extrabold tracking-tight text-forest-900">Register Now</h2>
+        <h2 className="text-xl font-bold tracking-tight text-forest-900">Register Now</h2>
         <p className="mt-1 text-sm text-ink-3">Join the national sports database in compliance with the Sports Act.</p>
 
         <ol className="relative mt-5 grid grid-cols-4">
@@ -402,7 +402,7 @@ export function RegistrationFlow({
                             <Icon size={19} strokeWidth={1.8} />
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-extrabold leading-tight text-forest-900">{label}</span>
+                            <span className="block text-sm font-bold leading-tight text-forest-900">{label}</span>
                             <span className="mt-0.5 block text-[12px] leading-snug text-ink-3">{ENTRY_META[t].blurb}</span>
                           </span>
                           <span aria-hidden className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition ${on ? "border-forest-700 bg-forest-700 text-white" : "border-line text-transparent"}`}>
@@ -629,13 +629,13 @@ export function RegistrationFlow({
                   <p className="text-[11px] font-bold uppercase tracking-wider text-gold">{form.type}</p>
                   <p className="mt-0.5 text-sm text-white/80">{form.clubName || form.name}</p>
                 </div>
-                <p className="text-3xl font-extrabold">
+                <p className="text-2xl font-bold">
                   <span className="mr-1.5 text-sm font-semibold text-white/70">KSh</span>
                   {fee.toLocaleString()}
                 </p>
               </div>
 
-              <h3 className="text-sm font-extrabold uppercase tracking-wider text-ink-3">Review your details</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-ink-3">Review your details</h3>
               <dl className="mt-2.5 grid gap-x-6 gap-y-3 rounded-xl border border-line bg-bone p-4 text-sm sm:grid-cols-2">
                 {[
                   isOrg ? ["Organisation", form.clubName] : ["Full names", form.name],
@@ -661,7 +661,7 @@ export function RegistrationFlow({
               {simulate ? (
                 <section className="mt-6 overflow-hidden rounded-xl border border-forest-700/25 bg-white shadow-[0_18px_36px_-28px_rgba(6,45,87,0.6)]" aria-label="Payment">
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-forest-100/60 px-4 py-3">
-                    <h3 className="flex items-center gap-2 text-sm font-extrabold text-forest-900"><Smartphone size={16} /> Pay with M-Pesa</h3>
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-forest-900"><Smartphone size={16} /> Pay with M-Pesa</h3>
                     <span className="rounded-full bg-gold-soft px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-forest-900">Simulation: no money moves</span>
                   </div>
                   {payPhase === "idle" ? (
@@ -752,7 +752,7 @@ function Success({ app: first, compact }: { app: Application; compact: boolean }
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-leaf-soft text-leaf">
         <CheckCircle2 size={32} />
       </span>
-      <h2 className="mt-5 text-2xl font-extrabold text-forest-900">Application submitted</h2>
+      <h2 className="mt-5 text-xl font-bold text-forest-900">Application submitted</h2>
       <p className="mt-2 text-sm text-ink-2">
         <b>{app.clubName || app.name}</b> applied as <b>{app.type}</b> in <b>{SPORT_BY_ID[app.sport]?.name}</b>.{" "}
         {app.payment.status === "Paid"

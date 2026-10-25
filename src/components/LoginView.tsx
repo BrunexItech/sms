@@ -47,7 +47,7 @@ export function LoginView() {
   return (
     <div className={`mx-auto grid gap-6 px-5 pb-24 ${state.config.demo ? "max-w-[1100px] lg:grid-cols-[1fr_1fr]" : "max-w-lg"}`}>
       <section className="-mt-8 self-start rounded-2xl border border-line bg-white p-6 shadow-[0_40px_80px_-50px_rgba(6,45,87,0.5)] sm:p-8">
-        <h2 className="text-2xl font-extrabold text-forest-900">Sign in</h2>
+        <h2 className="text-xl font-bold text-forest-900">Sign in</h2>
         <p className="mt-1 text-sm text-ink-3">For players and clubs. Ministry and federation staff use the <Link href="/staff" className="font-bold text-forest-700 underline">staff sign-in</Link>.</p>
         {me ? (
           <div className="mt-6 rounded-xl bg-forest-100 p-4 text-sm">
@@ -86,7 +86,7 @@ export function LoginView() {
 
       {state.config.demo && (
       <section className="rounded-2xl border border-line bg-white p-6 sm:p-8 lg:-mt-8">
-        <h2 className="text-lg font-extrabold text-forest-900">Demo applicant accounts</h2>
+        <h2 className="text-base font-bold text-forest-900">Demo applicant accounts</h2>
         <p className="mt-3 flex gap-2.5 rounded-lg border-l-4 border-gold bg-gold-soft p-3 text-[12.5px] text-ink-2">
           <ShieldAlert size={16} className="mt-0.5 shrink-0" />
           Seeded for review only. Password for all: <b className="font-mono">Sports@2026!</b>. A live deployment sets its own and removes these.

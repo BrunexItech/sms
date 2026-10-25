@@ -55,7 +55,7 @@ export function AssistantPanel({ compact = false }: { compact?: boolean }) {
           <Bot size={30} strokeWidth={1.6} />
         </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-extrabold text-forest-900">{L("Sports Assistant", "Msaidizi wa Michezo")}</h2>
+          <h2 className="text-base font-bold text-forest-900">{L("Sports Assistant", "Msaidizi wa Michezo")}</h2>
           <p className="mt-0.5 text-[13px] leading-snug text-ink-2">{greeting}</p>
           <div className="mt-2.5 flex gap-2">
             {(["en", "sw"] as const).map((l) => (

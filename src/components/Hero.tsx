@@ -104,13 +104,13 @@ export function Hero() {
         </p>
 
         <div key={s.sport} className="mt-5 max-w-[640px]" aria-live={playing ? "off" : "polite"}>
-          <p className="hero-rise text-sm font-extrabold uppercase tracking-[0.2em] text-gold" style={{ animationDelay: "380ms" }}>
+          <p className="hero-rise text-sm font-bold uppercase tracking-[0.2em] text-gold" style={{ animationDelay: "380ms" }}>
             <span className="mr-2 tabular-nums text-white/60">{String(i + 1).padStart(2, "0")} / {String(n).padStart(2, "0")}</span>{s.label}
           </p>
-          <h1 className="hero-rise mt-2 text-[clamp(2rem,4.6vw,3.9rem)] font-black leading-[1.03] tracking-tight" style={{ animationDelay: "480ms" }}>{s.headline}</h1>
-          <p className="hero-rise mt-4 max-w-xl text-base text-white/85 sm:text-lg" style={{ animationDelay: "620ms" }}>{s.line}</p>
+          <h1 className="hero-rise mt-2 text-[clamp(1.75rem,3.3vw,2.75rem)] font-bold leading-[1.03] tracking-tight" style={{ animationDelay: "480ms" }}>{s.headline}</h1>
+          <p className="hero-rise mt-4 max-w-xl text-base text-white/85 sm:text-base" style={{ animationDelay: "620ms" }}>{s.line}</p>
           <div className="hero-rise mt-7 flex flex-wrap items-center gap-3" style={{ animationDelay: "760ms" }}>
-            <Link href="/register" className="group inline-flex items-center gap-2.5 rounded-lg bg-gold px-6 py-3.5 text-[15px] font-extrabold text-forest-950 shadow-[0_16px_30px_-14px_rgba(245,180,0,0.9)] transition hover:brightness-105 sm:px-7">
+            <Link href="/register" className="group inline-flex items-center gap-2.5 rounded-lg bg-gold px-6 py-3.5 text-[15px] font-bold text-forest-950 shadow-[0_16px_30px_-14px_rgba(245,180,0,0.9)] transition hover:brightness-105 sm:px-7">
               Get started <ArrowRight size={18} className="transition group-hover:translate-x-1" />
             </Link>
             <Link href={`/federations/${s.sport}`} className="inline-flex items-center gap-2 rounded-lg border border-white/35 bg-white/10 px-5 py-3.5 text-[15px] font-bold text-white backdrop-blur transition hover:bg-white/20 sm:px-6">

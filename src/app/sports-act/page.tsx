@@ -46,7 +46,7 @@ export default function SportsActPage() {
             {ITEMS.map((i) => (
               <div key={i.t} className="rounded-3xl border border-line bg-paper p-6">
                 <i.icon size={24} className="text-forest-700" strokeWidth={1.6} />
-                <h3 className="font-display mt-4 text-lg font-medium">{i.t}</h3>
+                <h3 className="font-display mt-4 text-base font-medium">{i.t}</h3>
                 <p className="mt-1.5 text-sm text-ink-2">{i.d}</p>
               </div>
             ))}

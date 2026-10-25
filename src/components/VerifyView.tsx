@@ -55,7 +55,7 @@ export function VerifyView() {
             <div className="flex items-center gap-3">
               {view.valid ? <BadgeCheck className="text-leaf" size={30} /> : <ShieldAlert className="text-kenya-red" size={30} />}
               <div>
-                <p className="text-xl font-extrabold">{view.valid ? "Valid registration" : `Registration ${view.status?.toLowerCase()}`}</p>
+                <p className="text-lg font-bold">{view.valid ? "Valid registration" : `Registration ${view.status?.toLowerCase()}`}</p>
                 <p className="font-mono text-xs text-ink-3">{view.certificateNo}</p>
               </div>
             </div>
@@ -71,7 +71,7 @@ export function VerifyView() {
           <div className="step-anim mt-6 flex items-center gap-3 rounded-xl bg-bone p-5">
             <ShieldQuestion size={30} className="text-ink-3" />
             <div>
-              <p className="text-xl font-extrabold">Not found</p>
+              <p className="text-lg font-bold">Not found</p>
               <p className="text-sm text-ink-2">No active certificate has that number. Check it and try again.</p>
             </div>
           </div>

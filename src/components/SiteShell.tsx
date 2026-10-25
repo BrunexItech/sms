@@ -20,13 +20,27 @@ export function PageHero({
   title,
   children,
   photo,
+  plain = false,
 }: {
   eyebrow: string;
   title: React.ReactNode;
   children?: React.ReactNode;
   /** Full-width photograph instead of the default athletes banner. */
   photo?: { src: string; position?: string };
+  /** Slim title bar with no photograph, for signed-in working pages. */
+  plain?: boolean;
 }) {
+  if (plain)
+    return (
+      <section className="relative isolate overflow-hidden bg-forest-950 text-white">
+        <div aria-hidden className="pitch-lines absolute inset-0 -z-10 opacity-60" />
+        <div className="mx-auto max-w-[1500px] px-5 pb-16 pt-8">
+          <p className="eyebrow text-gold">{eyebrow}</p>
+          <h1 className="font-display mt-2 text-[1.5rem] leading-tight sm:text-[1.75rem]">{title}</h1>
+          {children && <div className="mt-1.5 max-w-2xl text-sm text-white/70">{children}</div>}
+        </div>
+      </section>
+    );
   return (
     <section className="relative isolate overflow-hidden bg-forest-950 text-white">
       {photo ? (
@@ -48,8 +62,8 @@ export function PageHero({
       {!photo && <div aria-hidden className="absolute inset-0 -z-10 bg-gradient-to-r from-forest-950 via-forest-950/85 to-forest-950/10" />}
       <div className={`mx-auto max-w-[1500px] px-5 ${photo ? "py-20 sm:py-[110px]" : "py-14 sm:py-[72px]"}`}>
         <p className="eyebrow text-gold">{eyebrow}</p>
-        <h1 className="font-display mt-3 max-w-3xl text-4xl leading-[1.05] sm:text-[3.1rem]">{title}</h1>
-        {children && <div className="mt-4 max-w-2xl text-lg text-white/75">{children}</div>}
+        <h1 className="font-display mt-3 max-w-3xl text-[1.75rem] leading-[1.15] sm:text-[2.25rem]">{title}</h1>
+        {children && <div className="mt-4 max-w-2xl text-base text-white/75">{children}</div>}
       </div>
     </section>
   );

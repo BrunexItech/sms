@@ -32,7 +32,7 @@ function Tile({ icon, label, value, hint, tone = "forest" }: { icon: React.React
       <span className={`hidden h-11 w-11 shrink-0 place-items-center rounded-xl min-[420px]:grid ${tones[tone]}`}>{icon}</span>
       <div className="min-w-0">
         <p className="text-[11px] font-bold uppercase tracking-wider text-ink-3">{label}</p>
-        <p className="text-xl font-extrabold leading-tight text-forest-900 sm:text-2xl">{value}</p>
+        <p className="text-lg font-bold leading-tight text-forest-900 sm:text-xl">{value}</p>
         {hint && <p className="text-xs leading-snug text-ink-3">{hint}</p>}
       </div>
     </div>
@@ -66,15 +66,15 @@ export function AccountView() {
         <div aria-hidden className="pitch-lines absolute inset-0 opacity-30" />
         <div className="relative flex flex-wrap items-center justify-between gap-5">
           <div className="flex min-w-0 items-center gap-4">
-            <span aria-hidden className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gold text-2xl font-black text-forest-950 shadow-[0_14px_28px_-12px_rgba(245,180,0,0.9)]">{initials || "?"}</span>
+            <span aria-hidden className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gold text-xl font-bold text-forest-950 shadow-[0_14px_28px_-12px_rgba(245,180,0,0.9)]">{initials || "?"}</span>
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-gold">{club ? "Verified club account" : "Welcome back"}</p>
-              <h2 className="truncate text-2xl font-extrabold sm:text-3xl">{club ? `${first}, ${club.name}` : `Hello, ${first}`}</h2>
+              <h2 className="truncate text-xl font-bold sm:text-2xl">{club ? `${first}, ${club.name}` : `Hello, ${first}`}</h2>
               <p className="mt-0.5 truncate text-sm text-white/70">{member.email}{member.phone ? ` · ${member.phone}` : ""}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2.5">
-            <Link href="/register" className="inline-flex items-center gap-2 rounded-xl bg-gold px-5 py-3 text-sm font-extrabold text-forest-950 shadow-[0_14px_28px_-14px_rgba(245,180,0,0.9)] transition hover:brightness-105"><Plus size={16} /> New registration</Link>
+            <Link href="/register" className="inline-flex items-center gap-2 rounded-xl bg-gold px-5 py-3 text-sm font-bold text-forest-950 shadow-[0_14px_28px_-14px_rgba(245,180,0,0.9)] transition hover:brightness-105"><Plus size={16} /> New registration</Link>
             <button onClick={async () => { await logout(); router.push("/"); }} className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"><LogOut size={16} /> Sign out</button>
           </div>
         </div>
@@ -92,7 +92,7 @@ export function AccountView() {
           {club && <ClubPortal />}
 
           <section className="print:hidden">
-            <h2 className="mb-3 flex items-center gap-2 text-lg font-extrabold text-forest-900"><ClipboardList size={19} /> My registrations</h2>
+            <h2 className="mb-3 flex items-center gap-2 text-base font-bold text-forest-900"><ClipboardList size={19} /> My registrations</h2>
             {mine.length === 0 && (
               <div className="rounded-2xl border border-dashed border-forest-700/30 bg-white p-8 text-center">
                 <p className="font-bold text-forest-900">No registrations yet</p>
@@ -109,7 +109,7 @@ export function AccountView() {
         <aside className="space-y-6 print:hidden xl:sticky xl:top-28">
           <NotificationList />
           <section className="rounded-2xl border border-line bg-white p-5" aria-label="Quick links">
-            <h2 className="text-lg font-extrabold text-forest-900">Quick links</h2>
+            <h2 className="text-base font-bold text-forest-900">Quick links</h2>
             <ul className="mt-3 grid gap-1.5">
               {[
                 ["/clubs", "Find a club", Users],
@@ -160,7 +160,7 @@ function RegistrationCard({ a }: { a: Application }) {
           <img src={a.photoUrl} alt="" className="h-14 w-14 shrink-0 rounded-xl object-cover" />
         )}
         <div className="min-w-0 flex-1">
-          <h3 className="text-lg font-extrabold leading-snug text-forest-900">{a.clubName || a.name}</h3>
+          <h3 className="text-base font-bold leading-snug text-forest-900">{a.clubName || a.name}</h3>
           <p className="text-xs text-ink-3">{a.type} · {sport?.name} · {formatPlace(a.place)}</p>
           <p className="mt-0.5 font-mono text-[11px] text-ink-3">{a.id}</p>
           {(fed || a.federation) && (
@@ -335,7 +335,7 @@ function ClubPortal() {
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-forest-800 text-white"><Users size={22} /></span>
           <div>
             <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-leaf"><BadgeCheck size={14} /> Verified club</p>
-            <h2 className="text-xl font-extrabold text-forest-900 sm:text-2xl">{club.name}: player roster</h2>
+            <h2 className="text-lg font-bold text-forest-900 sm:text-xl">{club.name}: player roster</h2>
             <p className="text-[13px] text-ink-3">Players you add are verified by the county office and the Registrar before they appear on the national record.</p>
           </div>
         </div>
@@ -443,7 +443,7 @@ function ClubPortal() {
       </div>
       {mediaFor && (
         <div className="mt-4 rounded-xl border border-forest-700/30 bg-white p-4">
-          <p className="mb-3 text-sm font-extrabold text-forest-900">Media for {roster.find((r) => r.id === mediaFor)?.name}</p>
+          <p className="mb-3 text-sm font-bold text-forest-900">Media for {roster.find((r) => r.id === mediaFor)?.name}</p>
           <MediaPanel key={mediaFor} applicationId={mediaFor} canEdit />
         </div>
       )}

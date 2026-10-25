@@ -17,7 +17,7 @@ export default function Page() {
             ["Decisions and appeals", "Registrations are decided by the Sports Registrar after county and federation review. You may appeal a rejection or suspension from My account."],
             ["Certificates", "A certificate is valid until the date it shows and must be renewed. Anyone may verify it on the platform."],
           ].map(([t, b]) => (
-            <section key={t} className="rounded-2xl border border-line bg-white p-5"><h2 className="font-extrabold text-forest-900">{t}</h2><p className="mt-1">{b}</p></section>
+            <section key={t} className="rounded-2xl border border-line bg-white p-5"><h2 className="font-bold text-forest-900">{t}</h2><p className="mt-1">{b}</p></section>
           ))}
         </div>
       </div>

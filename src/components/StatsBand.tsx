@@ -24,7 +24,7 @@ export function StatsBand() {
             </span>
             <span>
               <span className="block text-[12.5px] font-medium text-white/75">{s.label}</span>
-              <span className="block text-3xl font-extrabold tabular-nums leading-tight">{s.n.toLocaleString()}</span>
+              <span className="block text-2xl font-bold tabular-nums leading-tight">{s.n.toLocaleString()}</span>
             </span>
           </li>
         ))}

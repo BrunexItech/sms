@@ -14,7 +14,7 @@ export default function Page() {
       <section className="bg-bone pb-24 pt-12">
         <div className="mx-auto max-w-[1100px] space-y-6 px-5">
           <div className="-mt-8 rounded-2xl border border-line bg-white p-6 sm:p-8">
-            <h2 className="text-xl font-extrabold text-forest-900">Data</h2>
+            <h2 className="text-lg font-bold text-forest-900">Data</h2>
             <ul className="mt-3 space-y-2 text-sm text-ink-2">
               <li>Map tiles and facility records © <a className="font-semibold text-forest-700 underline" href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> (ODbL).</li>
               <li>Counties, sub-counties and wards: OCHA COD-AB Kenya via <a className="font-semibold text-forest-700 underline" href="https://data.humdata.org/dataset/cod-ab-ken">HDX</a> (CC BY-IGO).</li>
@@ -22,7 +22,7 @@ export default function Page() {
             </ul>
           </div>
           <div className="rounded-2xl border border-line bg-white p-6 sm:p-8">
-            <h2 className="text-xl font-extrabold text-forest-900">Home page photographs (Wikimedia Commons)</h2>
+            <h2 className="text-lg font-bold text-forest-900">Home page photographs (Wikimedia Commons)</h2>
             <ul className="mt-3 space-y-2 text-sm text-ink-2">
               {HERO_SLIDES.map((h) => (
                 <li key={h.sport}><b>{h.label}</b>: {h.credit.author}, {h.credit.license}. <a className="font-semibold text-forest-700 underline" href={h.credit.page} target="_blank" rel="noreferrer">File page</a></li>
@@ -30,7 +30,7 @@ export default function Page() {
             </ul>
           </div>
           <div className="rounded-2xl border border-line bg-white p-6 sm:p-8">
-            <h2 className="text-xl font-extrabold text-forest-900">Sport photographs (Wikimedia Commons)</h2>
+            <h2 className="text-lg font-bold text-forest-900">Sport photographs (Wikimedia Commons)</h2>
             <div className="mt-4 overflow-x-auto">
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead>

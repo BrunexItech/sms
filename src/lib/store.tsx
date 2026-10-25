@@ -424,7 +424,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return (
       <div className="grid min-h-screen place-items-center bg-bone px-6 text-center">
         <div>
-          <p className="text-2xl font-extrabold text-forest-900">We couldn&apos;t reach the registry.</p>
+          <p className="text-xl font-bold text-forest-900">We couldn&apos;t reach the registry.</p>
           <p className="mt-2 text-ink-2">{error}</p>
           <button onClick={() => location.reload()} className="mt-6 rounded-lg bg-forest-800 px-6 py-3 text-sm font-bold text-white">
             Try again

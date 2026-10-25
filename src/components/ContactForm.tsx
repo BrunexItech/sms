@@ -27,7 +27,7 @@ export function ContactForm() {
     return (
       <div className="step-anim grid place-items-center py-10 text-center">
         <span className="grid h-14 w-14 place-items-center rounded-full bg-leaf-soft text-leaf"><CheckCircle2 size={30} /></span>
-        <h3 className="mt-4 text-xl font-extrabold text-forest-900">Message received</h3>
+        <h3 className="mt-4 text-lg font-bold text-forest-900">Message received</h3>
         <p className="mt-1 max-w-sm text-sm text-ink-2">Thank you. The Ministry will respond to {f.email}. Prototype: nothing was actually sent.</p>
       </div>
     );

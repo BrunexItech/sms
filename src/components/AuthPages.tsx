@@ -36,7 +36,7 @@ export function ForgotView() {
   };
   return (
     <Card>
-      <h2 className="text-2xl font-extrabold text-forest-900">Reset your password</h2>
+      <h2 className="text-xl font-bold text-forest-900">Reset your password</h2>
       {res ? (
         <div className="mt-5 space-y-3 text-sm text-ink-2">
           <p className="flex gap-2"><CheckCircle2 className="shrink-0 text-leaf" size={18} /> {res.message}</p>
@@ -80,7 +80,7 @@ export function ResetView() {
   };
   return (
     <Card>
-      <h2 className="text-2xl font-extrabold text-forest-900">Choose a new password</h2>
+      <h2 className="text-xl font-bold text-forest-900">Choose a new password</h2>
       {!token ? <p className="mt-4 text-sm text-kenya-red">This link is missing its token. Request a new one.</p> : ok ? (
         <p className="mt-5 flex gap-2 text-sm font-semibold text-leaf"><CheckCircle2 size={18} /> Password updated. Taking you to sign in…</p>
       ) : (
@@ -123,7 +123,7 @@ export function SecurityView() {
 
   return (
     <Card>
-      <h2 className="text-2xl font-extrabold text-forest-900">Account security</h2>
+      <h2 className="text-xl font-bold text-forest-900">Account security</h2>
       {me.mustChangePassword && <p className="mt-3 rounded-lg border-l-4 border-gold bg-gold-soft p-3 text-sm">You are using a password someone else set. Choose your own to continue.</p>}
       {me.needs2fa && <p className="mt-3 rounded-lg border-l-4 border-gold bg-gold-soft p-3 text-sm">Staff accounts must turn on two-factor authentication.</p>}
 

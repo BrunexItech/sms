@@ -8,7 +8,7 @@ export const metadata = { title: "Security | National Sports Registry, Kenya" };
 export default function Page() {
   return (
     <SiteShell chat={false}>
-      <PageHero eyebrow="Account" title={<>Security</>} />
+      <PageHero plain eyebrow="Account" title={<>Security</>} />
       <div className="bg-bone pt-12">
         <Suspense fallback={<BlockLoader label="Loading" />}>
           <SecurityView />

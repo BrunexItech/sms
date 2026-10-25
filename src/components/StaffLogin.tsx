@@ -55,7 +55,7 @@ export function StaffLogin() {
         <div className="mb-6 flex justify-center"><Logo light /></div>
         <div className="rounded-2xl bg-white p-7 shadow-2xl sm:p-8">
           <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-forest-700"><ShieldCheck size={15} /> Staff portal</p>
-          <h1 className="mt-1 text-2xl font-extrabold text-forest-900">Sign in to the console</h1>
+          <h1 className="mt-1 text-xl font-bold text-forest-900">Sign in to the console</h1>
           <p className="mt-1 text-sm text-ink-3">For Ministry offices, county officers and federation administrators.</p>
 
           {me?.staff ? (

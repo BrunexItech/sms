@@ -29,20 +29,20 @@ export default function Page() {
             ].map((c) => (
               <Link key={c.t} href={c.href} className="group rounded-2xl border border-line bg-white p-6 shadow-[0_24px_40px_-30px_rgba(6,45,87,0.5)] transition hover:-translate-y-1">
                 <span className="grid h-12 w-12 place-items-center rounded-xl bg-forest-100 text-forest-800"><c.icon size={24} strokeWidth={1.6} /></span>
-                <h2 className="mt-4 text-lg font-extrabold text-forest-900">{c.t}</h2>
+                <h2 className="mt-4 text-base font-bold text-forest-900">{c.t}</h2>
                 <p className="mt-1 text-sm text-ink-3">{c.d}</p>
               </Link>
             ))}
           </div>
 
           <div className="rounded-2xl border border-line bg-white p-6 sm:p-8">
-            <h2 className="flex items-center gap-2 text-2xl font-extrabold text-forest-900"><HelpCircle size={24} /> Frequently asked questions</h2>
+            <h2 className="flex items-center gap-2 text-xl font-bold text-forest-900"><HelpCircle size={24} /> Frequently asked questions</h2>
             <div className="mt-5 divide-y divide-line">
               {FAQ.map(([q, a]) => (
                 <details key={q} className="group py-4">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-forest-900">
                     {q}
-                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-bone text-lg transition group-open:rotate-45">+</span>
+                    <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-bone text-base transition group-open:rotate-45">+</span>
                   </summary>
                   <p className="mt-3 text-[15px] leading-relaxed text-ink-2">{a}</p>
                 </details>
@@ -51,7 +51,7 @@ export default function Page() {
           </div>
 
           <div className="rounded-2xl border border-line bg-white p-6 sm:p-8">
-            <h2 className="text-2xl font-extrabold text-forest-900">Official sources</h2>
+            <h2 className="text-xl font-bold text-forest-900">Official sources</h2>
             <ul className="mt-4 grid gap-3 sm:grid-cols-3">
               {[
                 ["State Department for Sports", "https://www.sports.go.ke/"],

@@ -51,12 +51,12 @@ export function EventsView() {
                   <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-forest-950/80 to-transparent" />
                   <div className="absolute left-3 top-3 rounded-lg bg-white px-3 py-1.5 text-center leading-none shadow">
                     <span className="block text-[10px] font-bold uppercase tracking-wider text-kenya-red">{d.toLocaleString("en-KE", { month: "short" })}</span>
-                    <span className="block text-2xl font-extrabold text-forest-900">{d.getDate()}</span>
+                    <span className="block text-xl font-bold text-forest-900">{d.getDate()}</span>
                   </div>
                   <span className="absolute bottom-3 left-3 rounded-full bg-gold px-3 py-1 text-[11px] font-bold text-forest-950">{s?.name}</span>
                 </div>
                 <div className="p-4">
-                  <h3 className="text-lg font-extrabold leading-snug text-forest-900">{e.name}</h3>
+                  <h3 className="text-base font-bold leading-snug text-forest-900">{e.name}</h3>
                   <ul className="mt-3 space-y-1.5 text-sm text-ink-2">
                     <li className="flex gap-2"><MapPin size={15} className="mt-0.5 shrink-0 text-ink-3" /> {e.venue}, {e.county}</li>
                     <li className="flex gap-2"><CalendarDays size={15} className="mt-0.5 shrink-0 text-ink-3" /> {d.toLocaleDateString("en-KE", { dateStyle: "full" })}</li>

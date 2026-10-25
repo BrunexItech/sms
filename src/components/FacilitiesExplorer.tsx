@@ -276,7 +276,7 @@ export function FacilitiesExplorer() {
                 <div className="border-b border-line bg-forest-100/50 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-display text-xl font-medium leading-tight">{sel.name}</p>
+                      <p className="font-display text-lg font-medium leading-tight">{sel.name}</p>
                       <p className="mt-1 text-xs text-ink-3">{sel.id} · {sel.type} · {sel.source}</p>
                     </div>
                     <Pill>{sel.status}</Pill>
@@ -318,7 +318,7 @@ export function FacilitiesExplorer() {
           ) : created ? (
             <div className="step-anim p-8 text-center">
               <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-forest-100 text-forest-700"><CheckCircle2 size={30} /></span>
-              <h3 className="font-display mt-5 text-2xl font-medium">Facility submitted</h3>
+              <h3 className="font-display mt-5 text-xl font-medium">Facility submitted</h3>
               <p className="mt-2 text-sm text-ink-2">
                 <b>{created.name}</b> ({created.id}) is now in the verification queue of the Facilities Officer.
               </p>
@@ -328,7 +328,7 @@ export function FacilitiesExplorer() {
             </div>
           ) : !me ? (
             <div className="p-8 text-center">
-              <h3 className="text-xl font-extrabold text-forest-900">Sign in to register a facility</h3>
+              <h3 className="text-lg font-bold text-forest-900">Sign in to register a facility</h3>
               <p className="mt-2 text-sm text-ink-2">Facility submissions are tied to an account so the Facilities Officer can follow up.</p>
               <div className="mt-5 flex flex-wrap justify-center gap-3">
                 <Link href="/login" className="rounded-lg bg-forest-800 px-5 py-2.5 text-sm font-bold text-white">Sign in</Link>

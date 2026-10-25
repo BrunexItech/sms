@@ -47,7 +47,7 @@ export default function Page() {
         <ul className="grid gap-4 lg:grid-cols-2">
           {rows.map((e) => (
             <li key={e.id} className="rounded-2xl border border-line bg-white p-5">
-              <p className="text-lg font-extrabold text-forest-900">{e.name}</p>
+              <p className="text-base font-bold text-forest-900">{e.name}</p>
               <p className="mt-1 text-sm text-ink-2">{SPORT_BY_ID[e.sport]?.name} · {e.level} · {new Date(e.date).toLocaleDateString("en-KE", { dateStyle: "full" })}</p>
               <p className="text-sm text-ink-3">{e.venue}, {e.county} · by {e.organiser}</p>
               <div className="mt-4 flex gap-2">

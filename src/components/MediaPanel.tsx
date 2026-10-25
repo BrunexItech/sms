@@ -108,7 +108,7 @@ export function MediaPanel({ applicationId, canEdit }: { applicationId: string; 
       {err && <p role="alert" className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-semibold text-kenya-red-deep">{err}</p>}
 
       <div>
-        <h4 className="mb-2 flex items-center gap-2 text-sm font-extrabold text-forest-900"><Camera size={16} /> Photos ({photos.length})</h4>
+        <h4 className="mb-2 flex items-center gap-2 text-sm font-bold text-forest-900"><Camera size={16} /> Photos ({photos.length})</h4>
         {photos.length === 0 ? (
           <p className="text-sm text-ink-3">No photos yet.</p>
         ) : (
@@ -118,7 +118,7 @@ export function MediaPanel({ applicationId, canEdit }: { applicationId: string; 
                 <div className="relative aspect-square bg-bone">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={m.url} alt={m.title || "Player photo"} className="h-full w-full object-cover" loading="lazy" />
-                  {m.primary && <span className="absolute left-2 top-2 rounded-full bg-gold px-2 py-0.5 text-[10px] font-extrabold text-forest-950">PROFILE</span>}
+                  {m.primary && <span className="absolute left-2 top-2 rounded-full bg-gold px-2 py-0.5 text-[10px] font-bold text-forest-950">PROFILE</span>}
                 </div>
                 <div className="flex items-center justify-between gap-1 p-2">
                   <span className="truncate text-xs text-ink-2">{m.title || "Photo"}</span>
@@ -136,7 +136,7 @@ export function MediaPanel({ applicationId, canEdit }: { applicationId: string; 
       </div>
 
       <div>
-        <h4 className="mb-2 flex items-center gap-2 text-sm font-extrabold text-forest-900"><Video size={16} /> Trial videos ({videos.length})</h4>
+        <h4 className="mb-2 flex items-center gap-2 text-sm font-bold text-forest-900"><Video size={16} /> Trial videos ({videos.length})</h4>
         {videos.length === 0 ? (
           <p className="text-sm text-ink-3">No trial videos yet.</p>
         ) : (

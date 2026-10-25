@@ -80,7 +80,7 @@ export function FacilityMapPanel({ sportId }: { sportId: string | null }) {
     <section className="flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-[0_18px_40px_-28px_rgba(6,45,87,0.5)]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-forest-900">Sports Facilities Map</h2>
+          <h2 className="text-xl font-bold tracking-tight text-forest-900">Sports Facilities Map</h2>
           <p className="mt-1 text-sm text-ink-3">
             Explore and locate sports facilities across Kenya by County, Sub-County and Ward.
             {sportId && <> Showing <b className="text-forest-900">{SPORT_BY_ID[sportId]?.name}</b> facilities.</>}

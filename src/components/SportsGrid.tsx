@@ -28,7 +28,7 @@ export function SportsGrid() {
         <Reveal className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="eyebrow text-forest-700">All sports</p>
-            <h2 className="mt-2 max-w-xl text-4xl font-extrabold leading-[1.08] tracking-tight text-forest-900">
+            <h2 className="mt-2 max-w-xl text-2xl font-bold leading-[1.08] tracking-tight text-forest-900">
               {SPORTS.length} disciplines, each with its federation
             </h2>
           </div>
@@ -68,7 +68,7 @@ export function SportsGrid() {
                   <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-forest-950 via-forest-950/25 to-transparent" />
                   <ArrowUpRight size={20} className="absolute right-3.5 top-3.5 rounded-full bg-white/90 p-1 text-forest-900 opacity-0 transition group-hover:opacity-100" />
                   <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                    <h3 className="text-xl font-extrabold leading-tight">{s.name}</h3>
+                    <h3 className="text-lg font-bold leading-tight">{s.name}</h3>
                     <p className="mt-0.5 line-clamp-1 text-[11.5px] text-white/70">{federationName(s.id) || s.federation}</p>
                     <p className="mt-2 text-[11.5px] font-semibold text-gold">
                       {counts[s.id].fac} facilities · {counts[s.id].reg} registered

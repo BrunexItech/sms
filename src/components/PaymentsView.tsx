@@ -14,12 +14,12 @@ export function PaymentsView() {
     <div className="mx-auto grid max-w-[1100px] gap-6 px-5 pb-24 lg:grid-cols-[1fr_1.1fr]">
       <section className="-mt-8 rounded-2xl border border-line bg-white p-6 shadow-[0_40px_80px_-50px_rgba(6,45,87,0.5)] sm:p-7">
         <p className="eyebrow text-kenya-red">Fee schedule</p>
-        <h2 className="mt-2 text-2xl font-extrabold text-forest-900">Registration fees</h2>
+        <h2 className="mt-2 text-xl font-bold text-forest-900">Registration fees</h2>
         <ul className="mt-5 divide-y divide-line">
           {STAKEHOLDER_TYPES.map((t) => (
             <li key={t} className="flex items-center justify-between py-3 text-[15px]">
               <span>{t}</span>
-              <b className="text-lg font-extrabold">KSh {(state.fees[t] ?? 0).toLocaleString()}</b>
+              <b className="text-base font-bold">KSh {(state.fees[t] ?? 0).toLocaleString()}</b>
             </li>
           ))}
         </ul>
@@ -28,7 +28,7 @@ export function PaymentsView() {
 
       <section className="rounded-2xl border border-line bg-white p-6 sm:p-7 lg:-mt-8">
         <p className="eyebrow text-kenya-red">Your payments</p>
-        <h2 className="mt-2 text-2xl font-extrabold text-forest-900">Pay or check a registration</h2>
+        <h2 className="mt-2 text-xl font-bold text-forest-900">Pay or check a registration</h2>
         {!member && (
           <div className="mt-5 rounded-xl bg-bone p-5 text-sm text-ink-2">
             {user ? "Staff accounts manage payments from the console." : "Sign in to pay for a registration or see your receipts."}
@@ -51,7 +51,7 @@ export function PaymentsView() {
                   </div>
                   <Pill>{a.payment.status}</Pill>
                 </div>
-                <p className="mt-2 text-xl font-extrabold">KSh {a.payment.amount.toLocaleString()}</p>
+                <p className="mt-2 text-lg font-bold">KSh {a.payment.amount.toLocaleString()}</p>
                 {a.payment.status === "Paid" ? (
                   <p className="mt-1 flex items-center gap-2 text-sm text-leaf"><CheckCircle2 size={15} /> {a.payment.method} · Receipt <span className="font-mono">{a.payment.receipt}</span></p>
                 ) : (
