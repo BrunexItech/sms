@@ -127,6 +127,8 @@ export function DirectoryView({ initialTab = "players", scope = "staff", tabs: t
   }, [tab, q, sport, fedView, state.federations]);
   const recognisedCount = state.federations.filter((f) => f.status === "Recognised").length;
 
+  // Certificate numbers are not public: only staff registers and the owner's own account show them.
+  const showLast = tab === "facilities" || tab === "federations" || (staffView && tab !== "branches");
   const rows = tab === "facilities" ? facilityRows : tab === "federations" ? federationRows : (people?.rows ?? []);
   const pages = Math.max(1, Math.ceil(rows.length / PAGE));
   const view = rows.slice(page * PAGE, page * PAGE + PAGE);
@@ -210,7 +212,7 @@ export function DirectoryView({ initialTab = "players", scope = "staff", tabs: t
                       <th className="py-3 pr-4 font-semibold">Name</th><th className="py-3 pr-4 font-semibold">{tab === "players" ? "Role" : "Type"}</th>
                       {tab === "players" && <th className="py-3 pr-4 font-semibold">Club</th>}
                       <th className="py-3 pr-4 font-semibold">Sport</th><th className="py-3 pr-4 font-semibold">Location</th>
-                      <th className="py-3 pr-4 font-semibold">Status</th><th className="py-3 font-semibold">{tab === "facilities" ? "ID" : tab === "federations" ? "Contact" : "Certificate"}</th>
+                      <th className="py-3 pr-4 font-semibold">Status</th>{showLast && <th className="py-3 font-semibold">{tab === "facilities" ? "ID" : tab === "federations" ? "Contact" : "Certificate"}</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -222,7 +224,7 @@ export function DirectoryView({ initialTab = "players", scope = "staff", tabs: t
                         <td className="py-3.5 pr-4 text-ink-2">{r.sport}</td>
                         <td className="py-3.5 pr-4 text-ink-2">{r.place}</td>
                         <td className="py-3.5 pr-4"><Pill>{r.status}</Pill></td>
-                        <td className="py-3.5 font-mono text-xs text-ink-3">{r.extra || "—"}</td>
+                        {showLast && <td className="py-3.5 font-mono text-xs text-ink-3">{r.extra || "—"}</td>}
                       </tr>
                     ))}
                     {view.length === 0 && (

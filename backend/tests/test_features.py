@@ -453,6 +453,12 @@ def test_federation_and_county_branch_hierarchy(client_factory, staff):
     assert not any({"phone", "email"} & set(o) for o in branches[0]["officials"])
     listed = anon.get("/api/branches?q=nakuru").json()
     assert listed["total"] == 1 and listed["rows"][0]["sport"] == "volleyball" and "phone" not in listed["rows"][0]
+    # a federation or branch is not listed as a club, and no public list or profile exposes certificate numbers
+    clubs = anon.get("/api/clubs?q=volleyball").json()
+    assert not any(r["type"] in ("Federation / Association", "County Branch") for r in clubs["rows"])
+    assert anon.get(f"/api/clubs/{fid}").status_code == 404 and anon.get(f"/api/clubs/{bid}").status_code == 404
+    for url in ("/api/clubs", "/api/branches", "/api/federations/volleyball"):
+        assert "certificateNo" not in anon.get(url).text, url
     assert anon.get("/api/federations/nope").status_code == 404
 
 
@@ -487,3 +493,16 @@ def test_simulated_payment_needs_no_otp_and_is_labelled(client_factory, monkeypa
     assert r.status_code == 200, r.text
     pay_ = r.json()["application"]["payment"]
     assert pay_["status"] == "Paid" and pay_["method"] == "M-Pesa (simulated)" and pay_["receipt"]
+
+
+def test_registrar_publishes_official_event_directly(client_factory, staff):
+    from datetime import date as _d, timedelta as _t
+    ev = {"name": "National Sports Day 2027", "sport": "athletics", "date": (_d.today() + _t(days=40)).isoformat(),
+          "venue": "Kasarani Stadium", "countyId": place()["countyId"], "level": "Professional"}
+    assert staff("nairobi.sports@sports.example.ke").post("/api/events/official", json=ev).status_code == 403
+    assert client_factory().post("/api/events/official", json=ev).status_code == 401
+    r = staff("registrar@sports.example.ke").post("/api/events/official", json=ev)
+    assert r.status_code == 201 and r.json()["event"]["status"] == "Approved"
+    listed = client_factory().get("/api/bootstrap?facilities=0").json()["events"]
+    assert any(e["name"] == "National Sports Day 2027" and e["organiser"] == "Ministry of Sports" for e in listed)
+    assert staff("registrar@sports.example.ke").post("/api/events/official", json={**ev, "date": "2020-01-01"}).status_code == 422

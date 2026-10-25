@@ -634,16 +634,19 @@ def club_pay(d: ClubPayIn, db: Session = Depends(get_db), u: User = Depends(need
     return {"applications": [app_out(a, u, owner_view=True) for a in todo]}
 
 
+# Organisations listed on the public Clubs page. Federations and county branches have their own pages.
+PUBLIC_CLUB_TYPES = ["Club", "Academy", "Sports Business", "Facility Operator", "Event Organiser"]
+
+
 # ───────────── public club register ─────────────
 @router.get("/clubs")
 def public_clubs(q: str = "", county: str = "", sport: str = "", db: Session = Depends(get_db)):
     """Verified clubs and organisations only; no personal data and no rosters."""
-    rows = db.scalars(select(Application).where(Application.type.in_(TABS["clubs"]), Application.status == "Approved")
+    rows = db.scalars(select(Application).where(Application.type.in_(PUBLIC_CLUB_TYPES), Application.status == "Approved")
                       .order_by(Application.club_name, Application.name)).all()
     needle = q.strip().lower()
     out = [{"id": a.id, "name": a.club_name or a.name, "type": a.type, "sport": a.sport, "county": a.county,
-            "countyId": a.county_id, "subCounty": a.sub_county, "ward": a.ward, "certificateNo": a.cert_no,
-            "status": "Approved"}
+            "countyId": a.county_id, "subCounty": a.sub_county, "ward": a.ward, "status": "Approved"}
            for a in rows if (not county or a.county_id == county) and (not sport or a.sport == sport)
            and (not needle or needle in f"{a.club_name} {a.name} {a.county} {a.sub_county} {a.ward} {a.sport}".lower())]
     return {"rows": out[:500], "total": len(out)}
@@ -659,7 +662,7 @@ def public_federation(sport_id: str, db: Session = Depends(get_db)):
 
     def card(x: Application) -> dict:
         return {"id": x.id, "name": x.club_name or x.name, "county": x.county, "subCounty": x.sub_county, "ward": x.ward,
-                "address": x.address, "certificateNo": x.cert_no,
+                "address": x.address,
                 "officials": [{"role": roles.get(o["role"], {}).get("name", o["role"]), "name": o["name"]}
                               for o in R.norm_officials(x.officials) if o.get("name")]}
 
@@ -683,7 +686,7 @@ def public_branches(q: str = "", county: str = "", sport: str = "", db: Session 
                       .order_by(Application.county, Application.club_name)).all()
     needle = q.strip().lower()
     out = [{"id": a.id, "name": a.club_name or a.name, "type": "County Branch", "sport": a.sport, "county": a.county,
-            "countyId": a.county_id, "subCounty": a.sub_county, "ward": a.ward, "certificateNo": a.cert_no, "status": "Approved"}
+            "countyId": a.county_id, "subCounty": a.sub_county, "ward": a.ward, "status": "Approved"}
            for a in rows if (not county or a.county_id == county) and (not sport or a.sport == sport)
            and (not needle or needle in f"{a.club_name} {a.name} {a.county} {a.sport}".lower())]
     return {"rows": out[:500], "total": len(out)}
@@ -701,15 +704,14 @@ def national_bodies(sport_id: str, db: Session = Depends(get_db)):
 def public_club(cid: str, db: Session = Depends(get_db)):
     """One verified club and the players who agreed to be listed (name, role and sport only)."""
     c = db.get(Application, cid)
-    if not c or c.type not in TABS["clubs"] or c.status != "Approved":
+    if not c or c.type not in PUBLIC_CLUB_TYPES or c.status != "Approved":
         err(404, "Club not found.")
     roster = db.scalars(select(Application).where(
         Application.club_id == c.id, Application.status == "Approved", Application.public_listed.is_(True))
         .order_by(Application.name)).all()
     roles = R.role_by_id()
     return {"club": {"id": c.id, "name": c.club_name or c.name, "type": c.type, "sport": c.sport, "level": c.level,
-                     "federation": c.federation, "county": c.county, "subCounty": c.sub_county, "ward": c.ward,
-                     "certificateNo": c.cert_no},
+                     "federation": c.federation, "county": c.county, "subCounty": c.sub_county, "ward": c.ward},
             # role and name only: phone and email stay private
             "officials": [{"role": roles.get(o["role"], {}).get("name", o["role"]), "name": o["name"]}
                           for o in R.norm_officials(c.officials) if o.get("name")] if c.type in R.OFFICIAL_TYPES else [],

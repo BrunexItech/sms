@@ -9,7 +9,7 @@ import { errText } from "@/lib/store";
 import { BlockLoader } from "./ui/Spinner";
 
 interface Profile {
-  club: { id: string; name: string; type: string; sport: string; level: string; federation: string; county: string; subCounty: string; ward: string; certificateNo: string | null };
+  club: { id: string; name: string; type: string; sport: string; level: string; federation: string; county: string; subCounty: string; ward: string };
   officials: { role: string; name: string }[];
   players: { name: string; role: string; sport: string }[];
 }
@@ -34,11 +34,10 @@ export function ClubProfile({ id }: { id: string }) {
           <section className="rounded-2xl border border-line bg-white p-6 shadow-[0_30px_60px_-45px_rgba(6,45,87,0.5)]">
             <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-leaf"><BadgeCheck size={15} /> Verified · {data.club.type}</p>
             <h2 className="mt-1 text-2xl font-bold text-forest-900">{data.club.name}</h2>
-            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
               <div><dt className="text-ink-3">Sport</dt><dd className="font-semibold">{SPORT_BY_ID[data.club.sport]?.name ?? data.club.sport}</dd></div>
               {data.club.level && <div><dt className="text-ink-3">Level</dt><dd className="font-semibold">{data.club.level}</dd></div>}
               <div><dt className="text-ink-3">Federation</dt><dd className="font-semibold"><Link className="hover:underline" href={`/federations/${encodeURIComponent(data.club.sport)}`}>{data.club.federation || "—"}</Link></dd></div>
-              <div><dt className="text-ink-3">Certificate</dt><dd className="font-mono text-xs font-semibold">{data.club.certificateNo ? <Link className="hover:underline" href={`/verify?no=${encodeURIComponent(data.club.certificateNo)}`}>{data.club.certificateNo}</Link> : "—"}</dd></div>
             </dl>
             <p className="mt-4 flex items-center gap-1.5 text-sm text-ink-2"><MapPin size={15} /> {[data.club.ward, data.club.subCounty, data.club.county].filter(Boolean).join(", ")}</p>
           </section>

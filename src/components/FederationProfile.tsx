@@ -10,7 +10,7 @@ import { Pill } from "./ui/Pill";
 import { BlockLoader } from "./ui/Spinner";
 
 interface Official { role: string; name: string }
-interface Body { id: string; name: string; county: string; subCounty: string; ward: string; address?: string; certificateNo: string | null; officials: Official[] }
+interface Body { id: string; name: string; county: string; subCounty: string; ward: string; address?: string; officials: Official[] }
 interface Data {
   federation: { sportId: string; sportName: string; name: string; status: string; contactEmail: string };
   national: Body | null;
@@ -60,7 +60,6 @@ export function FederationProfile({ sport }: { sport: string }) {
               {data.federation.contactEmail && <a className="inline-flex items-center gap-1.5 text-forest-700 hover:underline" href={`mailto:${data.federation.contactEmail}`}><Mail size={14} /> {data.federation.contactEmail}</a>}
               <Link className="font-semibold text-forest-700 hover:underline" href={`/clubs?sport=${encodeURIComponent(sport)}`}>{data.clubs} verified club{data.clubs === 1 ? "" : "s"}</Link>
               {data.national && (data.national.address || data.national.county) && <span className="inline-flex items-center gap-1.5"><MapPin size={14} /> Head office: {[data.national.address, data.national.county].filter(Boolean).join(", ")}</span>}
-              {data.national?.certificateNo && <Link className="font-mono text-xs text-forest-700 hover:underline" href={`/verify?no=${encodeURIComponent(data.national.certificateNo)}`}>{data.national.certificateNo}</Link>}
             </div>
             {data.national ? (
               <>

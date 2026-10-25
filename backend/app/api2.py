@@ -307,6 +307,35 @@ def submit_event(d: EventIn, db: Session = Depends(get_db), u: User = Depends(ne
     return {"event": {"id": e.id, "status": e.status}}
 
 
+class OfficialEventIn(EventIn):
+    organiser: str = "Ministry of Sports"
+
+
+@router.post("/events/official", status_code=201)
+def publish_event(d: OfficialEventIn, db: Session = Depends(get_db), u: User = Depends(need_user)):
+    """Ministry staff with decision rights publish a national event directly; it needs no further approval."""
+    if u.role not in STAFF_ROLES or not can(u, "applications.decide"):
+        err(403, "Only the Registrar's office can publish an official event.")
+    c = next((x for x in R.admin()["counties"] if x["id"] == d.county_id), None)
+    try:
+        when = date.fromisoformat(d.date)
+    except ValueError:
+        err(422, "Enter the event date.")
+    if not c or d.sport not in R.SPORT_IDS or d.level not in R.LEVELS:
+        err(422, "Choose a valid county, sport and level.")
+    if len(d.name.strip()) < 5 or len(d.venue.strip()) < 3:
+        err(422, "Enter the event name and venue.")
+    if when < date.today():
+        err(422, "The event date must be in the future.")
+    e = Event(id=rid("EVT-", 5), name=d.name.strip(), sport=d.sport, date=when.isoformat(), venue=d.venue.strip(),
+              county=c["n"], county_id=c["id"], organiser=(d.organiser.strip() or "Ministry of Sports")[:80], level=d.level,
+              status="Approved", owner_id=u.id)
+    db.add(e)
+    log(db, u, "Published official event", e.id)
+    db.commit()
+    return {"event": {"id": e.id, "status": e.status}}
+
+
 @router.get("/events/pending")
 def pending_events(db: Session = Depends(get_db), u: User = Depends(need_user)):
     rows = db.scalars(select(Event).where(Event.status == "Pending").order_by(Event.date)).all()
