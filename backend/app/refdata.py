@@ -140,6 +140,19 @@ def admin_index() -> dict:
     return idx
 
 
+# National bodies and county branches are located by county (and a head-office address), not by ward.
+COUNTY_ONLY_TYPES = {"Federation / Association", "County Branch"}
+# Competition level describes players and teams; these organisations govern or serve every level.
+NO_LEVEL_TYPES = {"Federation / Association", "County Branch", "Sports Business", "Facility Operator", "Event Organiser"}
+
+
+def resolve_county(county_id: str) -> dict | None:
+    for c in admin()["counties"]:
+        if c["id"] == county_id:
+            return {"county_id": county_id, "sub_id": "", "ward_id": "", "county": c["n"], "sub_county": "", "ward": ""}
+    return None
+
+
 def resolve_place(county_id: str, sub_id: str, ward_id: str) -> dict | None:
     hit = admin_index().get((county_id, sub_id, ward_id))
     if not hit:

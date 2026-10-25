@@ -40,6 +40,10 @@ const ENTRY: [StakeholderType, string][] = [
 ];
 const isEntry = (t: StakeholderType) => ENTRY.some(([e]) => e === t);
 const OTHER_KEY = "__other";
+/** National bodies and branches are placed by county and head-office address, not by ward. */
+const COUNTY_ONLY_TYPES: StakeholderType[] = ["Federation / Association", "County Branch"];
+/** Competition level describes players and teams, not organisations that govern or serve every level. */
+const NO_LEVEL_TYPES: StakeholderType[] = ["Federation / Association", "County Branch", "Sports Business", "Facility Operator", "Event Organiser"];
 const ENTRY_META: Record<string, { icon: typeof Landmark; blurb: string }> = {
   "Federation / Association": { icon: Landmark, blurb: "Governing body of a sport" },
   "County Branch": { icon: Building2, blurb: "County arm of a national federation" },
@@ -77,6 +81,7 @@ interface Form {
   clubName: string;
   orgRegNo: string;
   parentId: string;
+  address: string;
   officials: ClubOfficial[];
   role: string;
   sportOther: string;
@@ -122,8 +127,10 @@ function validate(step: number, f: Form, needPassword = false): Errors {
   }
   if (step === 2) {
     if (!f.place.countyId) e.county = "Select your county.";
-    if (!f.place.subId) e.subCounty = "Select your sub-county.";
-    if (!f.place.wardId) e.ward = "Select your ward.";
+    if (!COUNTY_ONLY_TYPES.includes(f.type)) {
+      if (!f.place.subId) e.subCounty = "Select your sub-county.";
+      if (!f.place.wardId) e.ward = "Select your ward.";
+    }
   }
   if (step === 3) {
     if (!f.sport) e.sport = "Choose a sport.";
@@ -187,6 +194,7 @@ export function RegistrationFlow({
     clubName: "",
     orgRegNo: "",
     parentId: "",
+    address: "",
     officials: DEFAULT_OFFICIALS,
     role: "",
     sportOther: "",
@@ -259,7 +267,8 @@ export function RegistrationFlow({
         place: form.place,
         gps: form.gps,
         sport,
-        level: form.level,
+        level: NO_LEVEL_TYPES.includes(form.type) ? "" : form.level,
+        address: COUNTY_ONLY_TYPES.includes(form.type) ? form.address.trim() : undefined,
         clubName: form.clubName.trim(),
         orgRegNo: form.orgRegNo.trim(),
         parentId: form.type === "County Branch" ? form.parentId : undefined,
@@ -455,16 +464,25 @@ export function RegistrationFlow({
               gps={form.gps}
               onGps={(g) => set("gps", g)}
               errors={errors}
+              countyOnly={COUNTY_ONLY_TYPES.includes(form.type)}
+              showGps={form.type === "Club" || form.type === "Facility Operator"}
+              extra={COUNTY_ONLY_TYPES.includes(form.type) ? (
+                <Field label="Head-office town or street (optional)" className="sm:col-span-2" hint="For example: Kasarani, off Thika Road. Shown on the public federation page.">
+                  <input className={inputCls} value={form.address} maxLength={160} onChange={(e) => set("address", e.target.value)} autoComplete="street-address" />
+                </Field>
+              ) : undefined}
             />
           )}
 
           {step === 3 && (
             <div className="grid gap-4 sm:grid-cols-2">
+              {!NO_LEVEL_TYPES.includes(form.type) && (
               <Field label="Competition level">
                 <select className={inputCls} value={form.level} onChange={(e) => set("level", e.target.value)}>
                   {COMPETITION_LEVELS.map((l) => <option key={l}>{l}</option>)}
                 </select>
               </Field>
+              )}
 
               <div className="sm:col-span-2">
                 <span className="mb-1.5 block text-[13px] font-semibold">

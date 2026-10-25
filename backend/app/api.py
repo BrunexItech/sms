@@ -115,7 +115,12 @@ def check_person(d, kra_required: bool = True, phone_required: bool = True, emai
         err(422, "Enter a valid email address.")
 
 
-def place_or_422(p) -> dict:
+def place_or_422(p, county_only: bool = False) -> dict:
+    if county_only:
+        pl = R.resolve_county(p.county_id)
+        if not pl:
+            err(422, "Choose a valid county.")
+        return pl
     pl = R.resolve_place(p.county_id, p.sub_id, p.ward_id)
     if not pl:
         err(422, "Choose a valid county, sub-county and ward.")
@@ -127,8 +132,11 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
         err(422, "Unknown stakeholder type.")
     if d.sport not in R.SPORT_IDS:
         err(422, "Choose a sport.")
-    if d.level not in R.LEVELS:
-        err(422, "Choose a competition level.")
+    level = ""
+    if d.type not in R.NO_LEVEL_TYPES:
+        if d.level not in R.LEVELS:
+            err(422, "Choose a competition level.")
+        level = d.level
     if d.type in R.ORG_TYPES and len((d.club_name or "").strip()) < 3:
         err(422, "Enter the organisation name.")
     reg_no = (d.org_reg_no or "").strip()
@@ -209,9 +217,10 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
     a = Application(
         id=aid, owner_id=owner.id, club_id=club_id, parent_id=parent_id, type=d.type, name=d.name.strip(), id_no=d.id_no.strip(),
         kra=d.kra.strip().upper(), phone=d.phone.strip(), email=d.email.strip().lower(), sport=d.sport,
-        federation=the_federation(db, d.sport), level=d.level, club_name=(d.club_name or "").strip(),
+        federation=the_federation(db, d.sport), level=level, club_name=(d.club_name or "").strip(),
         officials=officials, role=role_id, sport_other=(d.sport_other or "").strip()[:80] if d.sport == "other" else "",
         org_reg_no=reg_no if d.type in R.ORG_TYPES else "",
+        address=(d.address or "").strip()[:160] if d.type in R.COUNTY_ONLY_TYPES else "",
         public_listed=bool(d.public_listing) and d.type == "Player / Sportsperson",
         has_contract=d.has_contract,
         notes=(d.notes or "")[:500], status="Submitted", created_at=t, updated_at=t,
@@ -226,8 +235,8 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
 # ───────────── input models ─────────────
 class PlaceIn(In):
     county_id: str
-    sub_id: str
-    ward_id: str
+    sub_id: str = ""
+    ward_id: str = ""
 
 
 class GeoIn(In):
@@ -253,6 +262,7 @@ class RegisterIn(In):
     sport_other: str = ""
     org_reg_no: str = ""
     parent_id: str | None = None
+    address: str = ""
     public_listing: bool = False
     has_contract: str | None = None
     notes: str = ""
@@ -508,7 +518,7 @@ def register(d: RegisterIn, response: Response, request: Request, db: Session = 
     if not u and S.too_many_attempts(f"reg:{ip}", limit=int(os.getenv("REG_RATE_LIMIT", "20")), window=3600):
         err(429, "Too many registrations from this connection. Try again later.")
     check_person(d, kra_required=d.type not in R.ORG_TYPES)
-    place = place_or_422(d.place)
+    place = place_or_422(d.place, d.type in R.COUNTY_ONLY_TYPES)
     if not u:
         if not d.password or len(d.password) < 8 or not re.search(r"[A-Za-z]", d.password) or not re.search(r"\d", d.password):
             err(422, "Choose a password of at least 8 characters with letters and a number.")
@@ -642,7 +652,7 @@ def public_federation(sport_id: str, db: Session = Depends(get_db)):
 
     def card(x: Application) -> dict:
         return {"id": x.id, "name": x.club_name or x.name, "county": x.county, "subCounty": x.sub_county, "ward": x.ward,
-                "certificateNo": x.cert_no,
+                "address": x.address, "certificateNo": x.cert_no,
                 "officials": [{"role": roles.get(o["role"], {}).get("name", o["role"]), "name": o["name"]}
                               for o in R.norm_officials(x.officials) if o.get("name")]}
 

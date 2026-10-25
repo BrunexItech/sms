@@ -15,6 +15,8 @@ export function LocationFields({
   onGps,
   errors = {},
   showGps = true,
+  countyOnly = false,
+  extra,
 }: {
   place: Place;
   onPlace: (p: Place) => void;
@@ -22,6 +24,10 @@ export function LocationFields({
   onGps?: (g: GeoPoint) => void;
   errors?: Partial<Record<"county" | "subCounty" | "ward", string>>;
   showGps?: boolean;
+  /** Only the county is asked (national federations and county branches). */
+  countyOnly?: boolean;
+  /** Extra fields shown after the location selects. */
+  extra?: React.ReactNode;
 }) {
   const { admin } = useStore();
   const [locating, setLocating] = useState(false);
@@ -63,6 +69,7 @@ export function LocationFields({
           ))}
         </select>
       </Field>
+      {!countyOnly && (<>
       <Field label="Sub-county / Constituency" required error={errors.subCounty}>
         <select
           className={inputCls}
@@ -93,10 +100,14 @@ export function LocationFields({
           ))}
         </select>
       </Field>
+      </>)}
+
+      {extra}
 
       {showGps && (
         <div className="sm:col-span-2">
-          <span className="mb-1.5 block text-[13px] font-semibold">GPS location</span>
+          <span className="mb-1.5 block text-[13px] font-semibold">GPS location (optional)</span>
+          <p className="mb-2 text-xs text-ink-3">Pin your ground: stand at the club or facility and capture. It does not fill the fields above.</p>
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"

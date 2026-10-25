@@ -63,6 +63,7 @@ export interface RegisterDraft {
   clubName: string;
   orgRegNo?: string;
   parentId?: string;
+  address?: string;
   clubOfficials?: ClubOfficial[];
   publicListing?: boolean;
   role?: string;

@@ -444,3 +444,23 @@ def test_federation_and_county_branch_hierarchy(client_factory, staff):
     listed = anon.get("/api/branches?q=nakuru").json()
     assert listed["total"] == 1 and listed["rows"][0]["sport"] == "volleyball" and "phone" not in listed["rows"][0]
     assert anon.get("/api/federations/nope").status_code == 404
+
+
+def test_national_body_is_located_by_county_and_has_no_level(client_factory, staff):
+    county_only = {"countyId": place()["countyId"]}
+    base = dict(sport="athletics", clubOfficials=OFFICIALS)
+    # a federation needs only a county and no competition level; address is kept
+    r = client_factory().post("/api/registrations", json=body(type="Federation / Association", clubName="Athletics Test Federation",
+                                                              place=county_only, level="", address="Kasarani, off Thika Road", **base))
+    assert r.status_code == 201, r.text
+    app = r.json()["application"]
+    assert app["level"] == "" and app["address"].startswith("Kasarani") and app["place"]["subCounty"] == ""
+    # a club still needs the full place and a valid level
+    assert client_factory().post("/api/registrations", json=body(type="Club", clubName="Ward Needed FC", place=county_only, sport="football", clubOfficials=OFFICIALS)).status_code == 422
+    assert client_factory().post("/api/registrations", json=body(type="Club", clubName="Level Needed FC", level="", sport="football", clubOfficials=OFFICIALS)).status_code == 422
+    # a bad county is refused
+    assert client_factory().post("/api/registrations", json=body(type="Federation / Association", clubName="Nowhere Federation", place={"countyId": "KE999"}, level="", **base)).status_code == 422
+    # the county officer of the head-office county cannot act on a national federation; the Registrar can
+    fid = app["id"]
+    assert staff("nairobi.sports@sports.example.ke").post(f"/api/applications/{fid}/transition", json={"action": "review"}).status_code == 403
+    assert staff("registrar@sports.example.ke").post(f"/api/applications/{fid}/transition", json={"action": "review"}).status_code == 200

@@ -48,6 +48,9 @@ def can(user, perm: str) -> bool:
 
 def app_in_scope(user, a) -> bool:
     s = SCOPE.get(user.role)
+    # a national federation answers to the Registrar, not to the county officer of its head-office county
+    if s in ("county", "sport") and a.type == "Federation / Association":
+        return False
     if s == "county":
         return a.county_id == user.county_id
     if s == "sport":

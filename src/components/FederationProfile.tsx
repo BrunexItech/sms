@@ -10,7 +10,7 @@ import { Pill } from "./ui/Pill";
 import { BlockLoader } from "./ui/Spinner";
 
 interface Official { role: string; name: string }
-interface Body { id: string; name: string; county: string; subCounty: string; ward: string; certificateNo: string | null; officials: Official[] }
+interface Body { id: string; name: string; county: string; subCounty: string; ward: string; address?: string; certificateNo: string | null; officials: Official[] }
 interface Data {
   federation: { sportId: string; sportName: string; name: string; status: string; contactEmail: string };
   national: Body | null;
@@ -59,6 +59,7 @@ export function FederationProfile({ sport }: { sport: string }) {
             <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-2">
               {data.federation.contactEmail && <a className="inline-flex items-center gap-1.5 text-forest-700 hover:underline" href={`mailto:${data.federation.contactEmail}`}><Mail size={14} /> {data.federation.contactEmail}</a>}
               <Link className="font-semibold text-forest-700 hover:underline" href={`/clubs?sport=${encodeURIComponent(sport)}`}>{data.clubs} verified club{data.clubs === 1 ? "" : "s"}</Link>
+              {data.national && (data.national.address || data.national.county) && <span className="inline-flex items-center gap-1.5"><MapPin size={14} /> Head office: {[data.national.address, data.national.county].filter(Boolean).join(", ")}</span>}
               {data.national?.certificateNo && <Link className="font-mono text-xs text-forest-700 hover:underline" href={`/verify?no=${encodeURIComponent(data.national.certificateNo)}`}>{data.national.certificateNo}</Link>}
             </div>
             {data.national ? (
@@ -89,7 +90,7 @@ export function FederationProfile({ sport }: { sport: string }) {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="flex items-center gap-1.5 font-extrabold text-forest-900"><BadgeCheck size={16} className="text-leaf" /> {b.name}</p>
-                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-3"><MapPin size={13} /> {[b.ward, b.subCounty, b.county].filter(Boolean).join(", ")}</p>
+                        <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-3"><MapPin size={13} /> {[b.address, b.ward, b.subCounty, b.county].filter(Boolean).join(", ")}</p>
                       </div>
                       <span className="rounded-full bg-forest-100 px-3 py-1 text-xs font-bold text-forest-800">{b.county} County</span>
                     </div>

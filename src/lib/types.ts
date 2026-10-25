@@ -134,6 +134,8 @@ export interface Application {
   orgRegNo?: string;
   /** County branches: the national federation they belong to. */
   parentId?: string | null;
+  /** Head-office town or street (national bodies). */
+  address?: string;
   /** Player agreed (or guardian agreed) to appear on the club's public page. */
   publicListed?: boolean;
   hasContract?: "Yes" | "No";

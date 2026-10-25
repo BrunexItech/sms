@@ -206,7 +206,8 @@ function Detail({ app }: { app: Application }) {
         <Row k="Sport" v={app.sport === "other" && app.sportOther ? `Other: ${app.sportOther}` : SPORT_BY_ID[app.sport]?.name} />
         {app.roleName && <Row k="Role" v={app.roleName} />}
         <Row k="Federation" v={app.federation} />
-        <Row k="Level" v={app.level} />
+        <Row k="Level" v={app.level || undefined} />
+        {app.address && <Row k="Head office" v={app.address} />}
         <Row k="Location" v={formatPlace(app.place)} />
         <Row k="GPS" v={app.gps ? `${app.gps.lat.toFixed(5)}, ${app.gps.lon.toFixed(5)}` : undefined} />
         <Row k={app.clubName ? "Contact person's ID / Passport" : "National ID / Passport"} v={seesPII ? app.idNo : "Restricted for your role"} />
