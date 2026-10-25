@@ -19,6 +19,8 @@ MPESA_TXN_TYPE = os.getenv("MPESA_TXN_TYPE", "CustomerPayBillOnline")
 MPESA_CALLBACK_SECRET = os.getenv("MPESA_CALLBACK_SECRET") or secrets.token_urlsafe(24)
 MPESA_BASE = "https://sandbox.safaricom.co.ke" if MPESA_ENV == "sandbox" else "https://api.safaricom.co.ke"
 MPESA_READY = PAYMENT_PROVIDER == "mpesa" and all([MPESA_CONSUMER_KEY, MPESA_CONSUMER_SECRET, MPESA_PASSKEY])
+# Simulated payment: no money moves. On by default in production until M-Pesa is live (SIMULATE_PAYMENTS=0 turns it off).
+SIMULATE_PAYMENTS = (not MPESA_READY) and os.getenv("SIMULATE_PAYMENTS", "1" if PRODUCTION else "0") == "1"
 
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))

@@ -10,9 +10,9 @@ import { useStore } from "@/lib/store";
 
 const NAV: { href: string; label: string; sw: string }[] = [
   { href: "/", label: "Home", sw: "Mwanzo" },
-  { href: "/register", label: "Register", sw: "Sajili" },
+  { href: "/federations", label: "Federations", sw: "Mashirikisho" },
   { href: "/clubs", label: "Clubs", sw: "Klabu" },
-      { href: "/verify", label: "Verify", sw: "Thibitisha" },
+  { href: "/verify", label: "Verify", sw: "Thibitisha" },
   { href: "/facilities", label: "Facilities", sw: "Vituo" },
   { href: "/events", label: "Events", sw: "Matukio" },
   { href: "/sports-act", label: "Sports Act", sw: "Sheria ya Michezo" },
@@ -134,7 +134,7 @@ export function Header() {
               {account.icon} {account.label}
             </Link>
             <Link href="/register" className="hidden rounded-lg bg-gradient-to-b from-forest-800 to-forest-900 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(6,45,87,0.8)] transition hover:brightness-110 sm:block">
-              Register
+              {lang === "sw" ? "Jisajili sasa" : "Register now"}
             </Link>
             <button className="grid h-10 w-10 place-items-center rounded-lg border border-line xl:hidden" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Toggle menu">
               {open ? <X size={18} /> : <Menu size={18} />}
@@ -158,7 +158,7 @@ export function Header() {
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <Link href={account.href} onClick={() => setOpen(false)} className="rounded-lg border border-forest-900/30 px-3 py-3 text-center font-semibold text-forest-900">{account.label}</Link>
-              <Link href="/register" onClick={() => setOpen(false)} className="rounded-lg bg-forest-900 px-3 py-3 text-center font-semibold text-white">Register</Link>
+              <Link href="/register" onClick={() => setOpen(false)} className="rounded-lg bg-forest-900 px-3 py-3 text-center font-semibold text-white">{lang === "sw" ? "Jisajili sasa" : "Register now"}</Link>
             </div>
           </nav>
         )}

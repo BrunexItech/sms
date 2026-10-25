@@ -261,6 +261,8 @@ export interface AppConfig {
   demo: boolean;
   /** Whether approval needs a paid fee (waived until online payment is live, unless an administrator decides). */
   required: boolean;
+  /** Payment is simulated (no money moves) until M-Pesa is live. */
+  simulate: boolean;
   evidence: EvidenceRule;
 }
 

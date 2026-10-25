@@ -474,3 +474,16 @@ def test_national_body_is_located_by_county_and_has_no_level(client_factory, sta
     fid = app["id"]
     assert staff("nairobi.sports@sports.example.ke").post(f"/api/applications/{fid}/transition", json={"action": "review"}).status_code == 403
     assert staff("registrar@sports.example.ke").post(f"/api/applications/{fid}/transition", json={"action": "review"}).status_code == 200
+
+
+def test_simulated_payment_needs_no_otp_and_is_labelled(client_factory, monkeypatch):
+    c = client_factory()
+    a = make(c)
+    # wrong OTP is refused while simulation is off (development)
+    assert c.post(f"/api/applications/{a['id']}/pay", json={"method": "M-Pesa", "ref": "0712345678", "otp": "000000"}).status_code == 422
+    monkeypatch.setattr(C, "SIMULATE_PAYMENTS", True)
+    assert c.get("/api/bootstrap?facilities=0").json()["payments"]["simulate"] is True
+    r = c.post(f"/api/applications/{a['id']}/pay", json={"method": "M-Pesa", "ref": "0712345678", "otp": "123456"})
+    assert r.status_code == 200, r.text
+    pay_ = r.json()["application"]["payment"]
+    assert pay_["status"] == "Paid" and pay_["method"] == "M-Pesa (simulated)" and pay_["receipt"]

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, Info, Landmark, ShieldCheck, UserRound, Users } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, Info, Landmark, ShieldCheck, Smartphone, UserRound, Users } from "lucide-react";
 import { SPORT_BY_ID } from "@/data/sports";
 import { emptyPlace } from "@/lib/admin";
 import { api } from "@/lib/api";
@@ -168,7 +168,7 @@ export function RegistrationFlow({
   /** Sport chosen elsewhere on the page (for example the strip under the hero). */
   presetSport?: string | null;
 }) {
-  const { state, register, member, user, federationName } = useStore();
+  const { state, register, member, user, federationName, payApplication, notify, admin } = useStore();
   const qs = useSearchParams();
   const queryPreset = qs.get("sport");
   const asParam = qs.get("as");
@@ -251,9 +251,18 @@ export function RegistrationFlow({
     setTimeout(() => top.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
   };
 
+  const simulate = !state.config.mpesa;
+  const countyName = admin.counties.find((c) => c.id === eff.place.countyId)?.n ?? "";
+  const [payPhone, setPayPhone] = useState("");
+  const [payPhase, setPayPhase] = useState<"idle" | "saving" | "prompt" | "pin" | "done">("idle");
+
   const submit = async () => {
+    if (simulate && !/^(\+?254|0)?[17]\d{8}$/.test((payPhone || form.phone).replace(/\s/g, ""))) {
+      return setServerError("Enter the M-Pesa number that will receive the payment prompt.");
+    }
     setBusy(true);
     setServerError("");
+    if (simulate) setPayPhase("saving");
     try {
       const minor = form.type === "Player / Sportsperson" && form.dob && ageOf(form.dob) < 18;
       const app = await register({
@@ -283,10 +292,26 @@ export function RegistrationFlow({
         guardian: minor ? { name: form.gName.trim(), phone: form.gPhone.trim(), relationship: form.gRel.trim(), consent: true } : undefined,
         website: form.website,
       });
+      if (simulate) {
+        // simulated M-Pesa: prompt, PIN, confirmation; no money moves
+        const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+        setPayPhase("prompt");
+        await wait(1500);
+        setPayPhase("pin");
+        await wait(2000);
+        try {
+          await payApplication(app.id, "M-Pesa", payPhone.trim() || form.phone, DEMO_OTP);
+        } catch (e) {
+          notify(`Registration saved, but the payment did not go through: ${errText(e)}`, "error");
+        }
+        setPayPhase("done");
+        await wait(900);
+      }
       setDone(app);
       setTimeout(() => top.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 30);
     } catch (err) {
       setServerError(errText(err));
+      setPayPhase("idle");
     } finally {
       setBusy(false);
     }
@@ -609,12 +634,72 @@ export function RegistrationFlow({
                   {fee.toLocaleString()}
                 </p>
               </div>
-              <ul className="space-y-2 text-sm text-ink-2">
-                <li>1. Submit your registration to create your account.</li>
-                <li>2. Pay the fee. {state.config.mpesa ? "You will get an M-Pesa prompt on your phone." : "Demo mode: no money moves."}</li>
-                <li>3. Your County Sports Office, your federation and the Registrar verify it.</li>
-                {form.type === "Player / Sportsperson" && <li>4. Optional: add a profile photo and trial video from My account.</li>}
-              </ul>
+
+              <h3 className="text-sm font-extrabold uppercase tracking-wider text-ink-3">Review your details</h3>
+              <dl className="mt-2.5 grid gap-x-6 gap-y-3 rounded-xl border border-line bg-bone p-4 text-sm sm:grid-cols-2">
+                {[
+                  isOrg ? ["Organisation", form.clubName] : ["Full names", form.name],
+                  isOrg ? ["Contact person", form.name] : ["ID number", form.idNo],
+                  isOrg && form.orgRegNo ? ["Registration no.", form.orgRegNo] : null,
+                  ["Phone", form.phone],
+                  ["Email", form.email],
+                  ["Location", [form.address, eff.place.ward, eff.place.subCounty, eff.place.county].filter(Boolean).join(", ") || [form.address, countyName].filter(Boolean).join(", ")],
+                  ["Sport", sport === "other" ? `Other: ${form.sportOther}` : SPORT_BY_ID[sport]?.name],
+                  ["Federation", federation],
+                  form.role ? ["Role", state.roles.find((r) => r.id === form.role)?.name] : null,
+                  !NO_LEVEL_TYPES.includes(form.type) ? ["Competition level", form.level] : null,
+                  OFFICIAL_TYPES.includes(form.type) ? ["Officials named", String(form.officials.filter((o) => o.name.trim()).length)] : null,
+                ].filter((x): x is string[] => !!x && !!x[1]).map(([k, v]) => (
+                  <div key={k} className="min-w-0">
+                    <dt className="text-[11px] font-bold uppercase tracking-wider text-ink-3">{k}</dt>
+                    <dd className="mt-0.5 break-words font-semibold text-forest-900">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+              <button type="button" onClick={() => go(1)} disabled={busy} className="mt-2 text-[12.5px] font-bold text-forest-700 underline">Edit details</button>
+
+              {simulate ? (
+                <section className="mt-6 overflow-hidden rounded-xl border border-forest-700/25 bg-white shadow-[0_18px_36px_-28px_rgba(6,45,87,0.6)]" aria-label="Payment">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-forest-100/60 px-4 py-3">
+                    <h3 className="flex items-center gap-2 text-sm font-extrabold text-forest-900"><Smartphone size={16} /> Pay with M-Pesa</h3>
+                    <span className="rounded-full bg-gold-soft px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-forest-900">Simulation: no money moves</span>
+                  </div>
+                  {payPhase === "idle" ? (
+                    <div className="p-4">
+                      <Field label="M-Pesa phone number" hint={`A payment prompt for KSh ${fee.toLocaleString()} is sent to this number.`}>
+                        <input className={inputCls} inputMode="tel" value={payPhone || form.phone} onChange={(e) => setPayPhone(e.target.value)} autoComplete="tel" />
+                      </Field>
+                    </div>
+                  ) : (
+                    <ol className="space-y-3 p-4 text-sm">
+                      {([
+                        ["saving", "Registration saved"],
+                        ["prompt", `Sending M-Pesa prompt to ${payPhone || form.phone}`],
+                        ["pin", "Waiting for your PIN"],
+                        ["done", `Payment of KSh ${fee.toLocaleString()} confirmed`],
+                      ] as const).map(([key, label], k) => {
+                        const order = ["saving", "prompt", "pin", "done"];
+                        const at = order.indexOf(payPhase);
+                        const state_ = k < at || payPhase === "done" ? "ok" : k === at ? "now" : "todo";
+                        return (
+                          <li key={key} className={`flex items-center gap-3 ${state_ === "todo" ? "text-ink-3" : "text-forest-900"}`}>
+                            <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full ${state_ === "ok" ? "bg-leaf text-white" : state_ === "now" ? "bg-forest-100 text-forest-700" : "bg-line text-transparent"}`}>
+                              {state_ === "ok" ? <Check size={13} strokeWidth={3.5} /> : state_ === "now" ? <ButtonSpinner className="h-3.5 w-3.5" /> : "."}
+                            </span>
+                            <span className={state_ === "now" ? "font-bold" : "font-medium"}>{label}</span>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  )}
+                </section>
+              ) : (
+                <ul className="mt-5 space-y-2 text-sm text-ink-2">
+                  <li>1. Submit your registration to create your account.</li>
+                  <li>2. Pay the fee. You will get an M-Pesa prompt on your phone.</li>
+                  <li>3. Your County Sports Office, your federation and the Registrar verify it.</li>
+                </ul>
+              )}
               {/* honeypot: hidden from people, tempting to bots */}
               <input tabIndex={-1} autoComplete="off" aria-hidden className="absolute -left-[9999px] h-0 w-0 opacity-0" name="website" value={form.website} onChange={(e) => set("website", e.target.value)} />
               <p className="mt-5 flex gap-2.5 rounded-lg border-l-4 border-gold bg-gold-soft p-3 text-[12.5px] text-ink-2">
@@ -646,7 +731,7 @@ export function RegistrationFlow({
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-leaf py-3.5 text-[15px] font-bold text-white shadow-[0_12px_24px_-12px_rgba(20,138,69,0.9)] transition hover:brightness-110 disabled:opacity-80"
           >
             {busy ? <ButtonSpinner /> : <Check size={17} />}
-            {busy ? "Submitting…" : "Submit registration"}
+            {busy ? (simulate ? "Processing payment…" : "Submitting…") : simulate ? `Pay KSh ${fee.toLocaleString()} & submit registration` : "Submit registration"}
           </button>
         )}
         {step > 1 && (
@@ -677,8 +762,8 @@ function Success({ app: first, compact }: { app: Application; compact: boolean }
       </p>
       <dl className="mt-6 grid gap-3 rounded-xl border border-dashed border-forest-700/40 bg-forest-100/50 p-4 text-left text-sm sm:grid-cols-2">
         <div><dt className="text-xs uppercase tracking-wider text-ink-3">Reference</dt><dd className="mt-0.5 font-mono font-semibold">{app.id}</dd></div>
-        <div><dt className="text-xs uppercase tracking-wider text-ink-3">Fee paid</dt><dd className="mt-0.5 font-semibold">KSh {app.payment.amount.toLocaleString()}</dd></div>
-        <div><dt className="text-xs uppercase tracking-wider text-ink-3">Location</dt><dd className="mt-0.5">{[app.place.ward, app.place.subCounty, app.place.county].join(", ")}</dd></div>
+        <div><dt className="text-xs uppercase tracking-wider text-ink-3">{app.payment.status === "Paid" ? "Fee paid" : "Fee"}</dt><dd className="mt-0.5 font-semibold">KSh {app.payment.amount.toLocaleString()}{app.payment.status === "Paid" && app.payment.receipt ? <span className="ml-2 font-mono text-xs font-normal text-ink-3">{app.payment.receipt}</span> : null}</dd></div>
+        <div><dt className="text-xs uppercase tracking-wider text-ink-3">Location</dt><dd className="mt-0.5">{[app.address, app.place.ward, app.place.subCounty, app.place.county].filter(Boolean).join(", ")}</dd></div>
         <div><dt className="text-xs uppercase tracking-wider text-ink-3">Federation</dt><dd className="mt-0.5">{app.federation}</dd></div>
       </dl>
       {app.payment.status === "Pending" && (

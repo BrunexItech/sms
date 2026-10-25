@@ -29,8 +29,6 @@ export function PayBox({
   const { state, payApplication, payClub, startMpesa, attemptStatus } = useStore();
   const mpesa = state.config.mpesa;
   const [phone, setPhone] = useState(defaultPhone);
-  const [method, setMethod] = useState("M-Pesa");
-  const [otp, setOtp] = useState("");
   const [err, setErr] = useState("");
   const [phase, setPhase] = useState<"idle" | "sending" | "waiting" | "done">("idle");
   const attempt = useRef<string | null>(null);
@@ -81,11 +79,16 @@ export function PayBox({
       }
       return;
     }
-    if (otp.length !== 6) return setErr("Enter the 6-digit one-time password.");
+    if (!/^(\+?254|0)?[17]\d{8}$/.test(phone.replace(/\s/g, ""))) return setErr("Enter the M-Pesa number that will receive the payment prompt.");
     setPhase("sending");
     try {
-      if (club) await payClub(ids, method, phone, otp);
-      else await payApplication(ids[0], method, phone, otp);
+      // simulated payment: show the prompt and PIN steps, then settle with no money moving
+      await new Promise((r) => setTimeout(r, 1400));
+      setPhase("waiting");
+      await new Promise((r) => setTimeout(r, 1800));
+      if (club) await payClub(ids, "M-Pesa", phone, DEMO_OTP);
+      else await payApplication(ids[0], "M-Pesa", phone, DEMO_OTP);
+      if (!alive.current) return;
       setPhase("done");
       onDone?.();
     } catch (e) {
@@ -97,7 +100,7 @@ export function PayBox({
   if (phase === "done")
     return <p className="mt-3 flex items-center gap-2 rounded-lg bg-leaf-soft px-3.5 py-2.5 text-sm font-bold text-leaf"><Check size={16} /> Payment received.</p>;
 
-  if (!mpesa && !state.config.demoOtp)
+  if (!mpesa && !state.config.demoOtp && !state.config.simulate)
     return (
       <p className="mt-3 rounded-lg border-l-4 border-gold bg-gold-soft px-3.5 py-3 text-sm text-ink-2">
         Online payment is not open yet. Your registration is saved; you will be able to pay from <b>My account</b> as soon as it opens.
@@ -110,28 +113,16 @@ export function PayBox({
         <div className="flex items-start gap-3 text-sm">
           <ButtonSpinner className="mt-0.5 text-forest-700" />
           <div>
-            <p className="font-bold text-forest-900">Check your phone</p>
-            <p className="text-ink-2">Enter your M-Pesa PIN to pay KSh {amount.toLocaleString()}. This page updates when payment is confirmed.</p>
+            <p className="font-bold text-forest-900">{mpesa ? "Check your phone" : "Waiting for your PIN (simulated)"}</p>
+            <p className="text-ink-2">{mpesa ? `Enter your M-Pesa PIN to pay KSh ${amount.toLocaleString()}. This page updates when payment is confirmed.` : `Confirming KSh ${amount.toLocaleString()}…`}</p>
           </div>
         </div>
       ) : (
         <>
-          <div className="grid gap-2.5 sm:grid-cols-3">
-            {mpesa ? (
-              <input className={`${inputCls} sm:col-span-2`} inputMode="tel" placeholder="M-Pesa phone, e.g. 0712 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} aria-label="M-Pesa phone number" />
-            ) : (
-              <>
-                <select className={inputCls} value={method} onChange={(e) => setMethod(e.target.value)} aria-label="Payment method">
-                  {["M-Pesa", "Visa / Mastercard", "Mobile Money", "Bank transfer"].map((m) => <option key={m}>{m}</option>)}
-                </select>
-                <input className={inputCls} placeholder="Phone / reference" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                <input className={inputCls} inputMode="numeric" maxLength={6} placeholder="OTP" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} />
-              </>
-            )}
-          </div>
+          <input className={inputCls} inputMode="tel" placeholder="M-Pesa phone, e.g. 0712 345 678" value={phone} onChange={(e) => setPhone(e.target.value)} aria-label="M-Pesa phone number" />
           <p className="mt-2 flex items-center gap-1.5 text-[11.5px] text-ink-3">
             <Smartphone size={12} />
-            {mpesa ? "You will receive an M-Pesa prompt on this number." : <>Demo mode: no money moves. OTP is <b className="font-mono">{DEMO_OTP}</b>.</>}
+            {mpesa ? "You will receive an M-Pesa prompt on this number." : "Simulation: no money moves. You will see the prompt and PIN steps, then the payment is recorded."}
           </p>
         </>
       )}

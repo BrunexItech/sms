@@ -446,7 +446,7 @@ def bootstrap(facilities: int = 1, db: Session = Depends(get_db), u: User | None
         "me": user_out(u) if u else None, "fees": fees(db), "stats": stats(db), "evidence": evidence_rule(db),
         "catalogue": {"roles": R.roles()},
         "payments": {"mpesa": C.MPESA_READY, "demoOtp": not C.PRODUCTION and not C.MPESA_READY, "demo": C.SEED_DEMO,
-                     "required": payment_required(db)},
+                     "required": payment_required(db), "simulate": C.SIMULATE_PAYMENTS},
         "federations": [federation_out(f) for f in db.scalars(select(Federation).order_by(Federation.sport_name)).all()],
         "events": [event_out(e) for e in db.scalars(select(Event).where(Event.status == "Approved").order_by(Event.date)).all()],
     }
@@ -549,13 +549,19 @@ def settle(db: Session, a: Application, who: User, method: str, ref: str):
     log(db, who, "Payment received", a.id)
 
 
+def pay_label(method: str) -> str:
+    return f"{method} (simulated)" if C.SIMULATE_PAYMENTS else method
+
+
 def check_pay(d: PayIn):
     if d.method not in PAY_METHODS:
         err(422, "Choose a payment method.")
-    if C.PRODUCTION and not C.MPESA_READY:
-        err(501, "Online payment is not open yet. Your registration is saved; you can pay from My account once it opens.")
     if C.MPESA_READY:
         err(400, "Pay with M-Pesa: this deployment uses live payment confirmation.")
+    if C.SIMULATE_PAYMENTS:
+        return  # simulated payment: no money moves, no one-time password
+    if C.PRODUCTION:
+        err(501, "Online payment is not open yet. Your registration is saved; you can pay from My account once it opens.")
     if d.otp != DEMO_OTP:
         err(422, "The one-time password is incorrect.")
 
@@ -568,7 +574,7 @@ def pay(aid: str, d: PayIn, db: Session = Depends(get_db), u: User = Depends(nee
     if a.pay_status != "Pending":
         err(409, "This registration is already paid.")
     check_pay(d)
-    settle(db, a, u, d.method, d.ref)
+    settle(db, a, u, pay_label(d.method), d.ref)
     db.commit()
     return {"application": app_out(a, u, owner_view=True)}
 
@@ -623,7 +629,7 @@ def club_pay(d: ClubPayIn, db: Session = Depends(get_db), u: User = Depends(need
     if not todo:
         err(409, "Nothing to pay: these players are already paid.")
     for a in todo:
-        settle(db, a, u, d.method, d.ref)
+        settle(db, a, u, pay_label(d.method), d.ref)
     db.commit()
     return {"applications": [app_out(a, u, owner_view=True) for a in todo]}
 
