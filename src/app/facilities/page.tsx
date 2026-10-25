@@ -8,7 +8,7 @@ export const metadata = { title: "Facilities Map | National Sports Registry, Ken
 export default function FacilitiesPage() {
   return (
     <SiteShell>
-      <PageHero eyebrow="Facilities register" title={<>Every facility, <em className="text-gold">on the map.</em></>}>
+      <PageHero photo={{ src: "/hero/stadium.jpg", position: "50% 62%" }} eyebrow="Facilities register" title={<>Every facility, <em className="text-gold">on the map.</em></>}>
         Search any place in Kenya, browse stadiums, pitches, pools and courts by county, or register a facility by
         placing it on the map. Built on free OpenStreetMap data.
       </PageHero>
