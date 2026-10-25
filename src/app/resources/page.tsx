@@ -52,11 +52,10 @@ export default function Page() {
 
           <div className="rounded-2xl border border-line bg-white p-6 sm:p-8">
             <h2 className="text-xl font-bold text-forest-900">Official sources</h2>
-            <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
               {[
                 ["State Department for Sports", "https://www.sports.go.ke/"],
                 ["Sports Act 2013 on Kenya Law", "https://new.kenyalaw.org/akn/ke/act/2013/25/eng@2022-12-31/source"],
-                ["IEBC locations", "https://www.iebc.or.ke/admin/pages/locations.php"],
               ].map(([l, h]) => (
                 <li key={l}>
                   <a href={h} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-2 rounded-xl border border-line px-4 py-3.5 text-sm font-bold text-forest-800 transition hover:border-forest-700 hover:bg-forest-100">

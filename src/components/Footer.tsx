@@ -51,7 +51,6 @@ export function Footer() {
             {[
               ["State Department for Sports", "https://www.sports.go.ke/"],
               ["Sports Act 2013 (Kenya Law)", "https://new.kenyalaw.org/akn/ke/act/2013/25/eng@2022-12-31/source"],
-              ["IEBC locations", "https://www.iebc.or.ke/admin/pages/locations.php"],
             ].map(([l, h]) => (
               <li key={l}>
                 <a href={h} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 transition hover:text-white">
