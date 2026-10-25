@@ -26,9 +26,14 @@ interface Props {
   className?: string;
 }
 
+/** Kenya's extent (south-west, north-east) with a small margin; the map cannot be panned or zoomed out beyond it. */
+const KENYA_FIT: [[number, number], [number, number]] = [
+  [-4.8, 33.85],
+  [5.1, 41.95],
+];
 const KENYA_BOUNDS: [[number, number], [number, number]] = [
-  [-5.3, 33.4],
-  [5.6, 42.3],
+  [-5.3, 33.3],
+  [5.6, 42.5],
 ];
 
 /**
@@ -67,16 +72,25 @@ export function GeoMap({
       if (cancelled || !el.current || mapRef.current) return;
       libRef.current = L;
       const map = L.map(el.current, {
-        center: [0.3, 37.9],
+        center: [0.15, 37.9],
         zoom: 6,
-        minZoom: 5,
+        zoomSnap: 0.25,
         maxBounds: KENYA_BOUNDS,
-        maxBoundsViscosity: 0.8,
+        maxBoundsViscosity: 1,
         preferCanvas: true,
         zoomControl: false,
         attributionControl: true,
       });
       L.control.zoom({ position: zoomPos.current }).addTo(map);
+      // frame Kenya exactly, and never allow zooming out past that frame
+      const frame = () => {
+        const z = map.getBoundsZoom(KENYA_FIT, false);
+        map.setMinZoom(z);
+        if (map.getZoom() < z) map.fitBounds(KENYA_FIT, { animate: false });
+      };
+      map.fitBounds(KENYA_FIT, { animate: false });
+      map.setMinZoom(map.getBoundsZoom(KENYA_FIT, false));
+      map.on("resize", frame);
       const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',

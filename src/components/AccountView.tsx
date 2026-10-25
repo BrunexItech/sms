@@ -62,7 +62,7 @@ export function AccountView() {
 
   return (
     <div className="mx-auto max-w-[1200px] space-y-6 px-5 pb-24">
-      <header className="relative -mt-8 overflow-hidden rounded-2xl bg-gradient-to-br from-forest-800 via-forest-900 to-forest-950 p-6 text-white shadow-[0_40px_80px_-50px_rgba(6,45,87,0.8)] print:hidden sm:p-8">
+      <header className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-forest-800 via-forest-900 to-forest-950 p-6 text-white shadow-[0_40px_80px_-50px_rgba(6,45,87,0.8)] print:hidden sm:p-8">
         <div aria-hidden className="pitch-lines absolute inset-0 opacity-30" />
         <div className="relative flex flex-wrap items-center justify-between gap-5">
           <div className="flex min-w-0 items-center gap-4">

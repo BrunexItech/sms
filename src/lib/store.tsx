@@ -1,5 +1,6 @@
 "use client";
 
+import { ToastViewport } from "@/components/ui/Toasts";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, ApiError } from "./api";
 import { loadAdmin, type AdminData } from "./admin";
@@ -106,6 +107,7 @@ export interface PlayerDraft {
 interface Toast {
   id: number;
   text: string;
+  title?: string;
   tone: "ok" | "error";
 }
 
@@ -126,7 +128,7 @@ interface Store {
   startMpesa: (ids: string[], phone: string) => Promise<string>;
   attemptStatus: (id: string) => Promise<{ status: string; message: string; receipt: string | null }>;
   logout: () => Promise<void>;
-  notify: (text: string, tone?: "ok" | "error") => void;
+  notify: (text: string, tone?: "ok" | "error", title?: string) => void;
   // applicant
   register: (d: RegisterDraft) => Promise<Application>;
   payApplication: (id: string, method: string, ref: string, otp: string) => Promise<void>;
@@ -243,14 +245,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
   }, [apply]);
 
-  const notify = useCallback((text: string, tone: "ok" | "error" = "ok") => {
-    let id = 0;
-    setToasts((t) => {
-      id = (t[t.length - 1]?.id ?? 0) + 1;
-      return [...t, { id, text, tone }];
-    });
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 5000);
+  const notify = useCallback((text: string, tone: "ok" | "error" = "ok", title?: string) => {
+    setToasts((t) => [...t.slice(-3), { id: (t[t.length - 1]?.id ?? 0) + 1, text, tone, title }]);
   }, []);
+  const closeToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
   const refresh = useCallback(async () => {
     const b = await api<Boot>("/bootstrap?facilities=0");
@@ -439,13 +437,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   return (
     <StoreContext.Provider value={store}>
       {children}
-      <div className="pointer-events-none fixed bottom-5 left-5 z-[90] flex max-w-[min(92vw,380px)] flex-col gap-2" aria-live="polite">
-        {toasts.map((t) => (
-          <p key={t.id} className={`step-anim pointer-events-auto rounded-xl px-4 py-3 text-sm font-semibold shadow-xl ${t.tone === "error" ? "bg-kenya-red text-white" : "bg-forest-900 text-white"}`}>
-            {t.text}
-          </p>
-        ))}
-      </div>
+      <ToastViewport toasts={toasts} onClose={closeToast} />
     </StoreContext.Provider>
   );
 }

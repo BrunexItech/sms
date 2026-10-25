@@ -128,3 +128,63 @@ export function Kpi({ label, value, hint, delta, tone = "default", icon }: { lab
     </div>
   );
 }
+
+/** Circular progress with the figure in the middle (one hue, thin stroke). */
+export function Ring({ value, label, color = "#12743f", size = 120 }: { value: number; label: string; color?: string; size?: number }) {
+  const r = size / 2 - 9;
+  const c = 2 * Math.PI * r;
+  const v = Math.max(0, Math.min(100, value));
+  return (
+    <div className="relative grid place-items-center" style={{ width: size, height: size }} role="img" aria-label={`${label}: ${v}%`}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="currentColor" className="text-line" strokeWidth={8} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={8} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - v / 100)} style={{ transition: "stroke-dashoffset 900ms cubic-bezier(.2,.7,.2,1)" }} />
+      </svg>
+      <span className="absolute text-center leading-tight">
+        <b className="block text-xl tabular-nums text-forest-900">{v}%</b>
+        <span className="text-[10.5px] font-semibold uppercase tracking-wider text-ink-3">{label}</span>
+      </span>
+    </div>
+  );
+}
+
+const TONES = {
+  blue: { chip: "bg-[#2f6fc4]/12 text-[#2f6fc4]", bar: "#2f6fc4" },
+  green: { chip: "bg-leaf/15 text-leaf", bar: "#12743f" },
+  amber: { chip: "bg-gold-soft text-[#9a6b00]", bar: "#d99a00" },
+  red: { chip: "bg-red-50 text-kenya-red", bar: "#c8102e" },
+  navy: { chip: "bg-forest-100 text-forest-800", bar: "#0b4f8a" },
+} as const;
+export type KpiTone = keyof typeof TONES;
+
+/** A headline card that opens a detail panel when toggled. */
+export function KpiToggle({ label, value, hint, delta, tone, icon, active, onToggle, controls }: {
+  label: string; value: React.ReactNode; hint?: string; delta?: number | null; tone: KpiTone; icon: React.ReactNode; active: boolean; onToggle: () => void; controls: string;
+}) {
+  const t = TONES[tone];
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={active}
+      aria-controls={controls}
+      className={`group relative overflow-hidden rounded-2xl border bg-white p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_22px_44px_-28px_rgba(6,45,87,0.7)] ${active ? "border-forest-700 shadow-[0_22px_44px_-28px_rgba(6,45,87,0.7)]" : "border-line shadow-[0_14px_34px_-34px_rgba(6,45,87,0.7)]"}`}
+    >
+      <span aria-hidden className="absolute inset-x-0 top-0 h-[3px] transition-opacity" style={{ background: t.bar, opacity: active ? 1 : 0.35 }} />
+      <div className="flex items-start justify-between gap-2">
+        <span className={`grid h-9 w-9 place-items-center rounded-xl ${t.chip}`}>{icon}</span>
+        <span aria-hidden className={`grid h-6 w-6 place-items-center rounded-full text-ink-3 transition duration-200 group-hover:bg-bone ${active ? "rotate-180 bg-bone" : ""}`}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5 6 8l3.5-3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </span>
+      </div>
+      <p className="mt-3 text-[11.5px] font-bold uppercase tracking-wider text-ink-3">{label}</p>
+      <p className="mt-1 text-2xl font-bold leading-none tabular-nums text-forest-900">{value}</p>
+      <p className="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-ink-3">
+        {delta !== undefined && delta !== null && (
+          <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 font-bold ${delta >= 0 ? "bg-leaf/15 text-leaf" : "bg-red-50 text-kenya-red"}`}>{delta >= 0 ? "▲" : "▼"} {Math.abs(delta)}%</span>
+        )}
+        {hint}
+      </p>
+    </button>
+  );
+}

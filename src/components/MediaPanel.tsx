@@ -11,7 +11,7 @@ const MB = 1024 * 1024;
 
 /** A player's profile photos and trial videos. `canEdit` is true only for the account that registered them. */
 export function MediaPanel({ applicationId, canEdit }: { applicationId: string; canEdit: boolean }) {
-  const { refresh } = useStore();
+  const { refresh, notify } = useStore();
   const [items, setItems] = useState<Media[] | null>(null);
   const [kind, setKind] = useState<"photo" | "video">("photo");
   const [title, setTitle] = useState("");
@@ -59,6 +59,7 @@ export function MediaPanel({ applicationId, canEdit }: { applicationId: string; 
       if (file.current) file.current.value = "";
       setTitle("");
       await Promise.all([load(), refresh()]);
+      notify(`${f.name} (${(f.size / MB).toFixed(1)} MB) was added to your ${kind === "photo" ? "photos" : "trial videos"}.`, "ok", kind === "photo" ? "Photo uploaded" : "Video uploaded");
     } catch (e) {
       setErr(errText(e));
     } finally {

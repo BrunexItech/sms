@@ -8,7 +8,7 @@ import { api } from "@/lib/api";
 import { ROLE_BY_ID, inScopeApp, inScopeFacility } from "@/lib/roles";
 import { useStore } from "@/lib/store";
 import { BarList, Card, PageTitle } from "@/components/console/ui";
-import { Kpi, StackedBar, TrendChart } from "@/components/console/charts";
+import { KpiToggle, Ring, StackedBar, TrendChart } from "@/components/console/charts";
 
 const STATUS_COLORS: Record<string, string> = {
   Submitted: "#2f6fc4",
@@ -32,6 +32,7 @@ const pct = (now: number, prev: number) => (prev === 0 ? (now === 0 ? 0 : 100) :
 export default function ConsoleHome() {
   const { state, user, can } = useStore();
   const [pendingEvents, setPendingEvents] = useState<number | null>(null);
+  const [openKpi, setOpenKpi] = useState<string | null>(null);
   const [nowMs] = useState(() => Date.now());
   const canEvents = !!user && (can("applications.review") || can("applications.decide"));
 
@@ -112,14 +113,87 @@ export default function ConsoleHome() {
       />
 
       {showApps && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-          <Kpi label="Registrations" value={d.apps.length.toLocaleString()} delta={pct(d.last30, d.prev30)} hint="new, last 30 days" icon={<ClipboardList size={16} />} />
-          <Kpi label="Verified" value={d.count("Approved").toLocaleString()} hint={`${d.verified}% of all`} tone="good" icon={<BadgeCheck size={16} />} />
-          <Kpi label="Awaiting decision" value={d.decision} hint="under review or endorsed" tone={d.decision > 0 ? "alert" : "default"} icon={<Scale size={16} />} />
-          <Kpi label="Appeals" value={d.appeals} hint="open with the Registrar" icon={<Landmark size={16} />} />
-          {showMoney ? <Kpi label="Fees collected" value={`KSh ${d.revenue.toLocaleString()}`} hint={`KSh ${d.outstanding.toLocaleString()} still pending`} icon={<Wallet size={16} />} /> : <Kpi label="Needs information" value={d.count("Needs info")} hint="waiting on applicants" />}
-          <Kpi label="Facilities" value={d.facs.length.toLocaleString()} hint={`${d.facs.length ? Math.round((d.facs.filter((f) => f.status === "Verified").length / d.facs.length) * 100) : 0}% verified`} icon={<MapPinned size={16} />} />
-        </div>
+        <>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+            {([
+              ["registrations", "Registrations", d.apps.length.toLocaleString(), "new, last 30 days", "blue", <ClipboardList key="i" size={18} />, pct(d.last30, d.prev30)],
+              ["verified", "Verified", d.count("Approved").toLocaleString(), `${d.verified}% of all`, "green", <BadgeCheck key="i" size={18} />, undefined],
+              ["decision", "Awaiting decision", d.decision, "under review or endorsed", d.decision > 0 ? "amber" : "navy", <Scale key="i" size={18} />, undefined],
+              ["appeals", "Appeals", d.appeals, "open with the Registrar", d.appeals > 0 ? "red" : "navy", <Landmark key="i" size={18} />, undefined],
+              ...(showMoney ? [["fees", "Fees collected", `KSh ${d.revenue.toLocaleString()}`, `KSh ${d.outstanding.toLocaleString()} pending`, "green", <Wallet key="i" size={18} />, undefined]] : []),
+              ["facilities", "Facilities", d.facs.length.toLocaleString(), `${d.facs.length ? Math.round((d.facs.filter((f) => f.status === "Verified").length / d.facs.length) * 100) : 0}% verified`, "navy", <MapPinned key="i" size={18} />, undefined],
+            ] as [string, string, React.ReactNode, string, "blue" | "green" | "amber" | "red" | "navy", React.ReactNode, number | undefined][]).map(([key, label, value, hint, tone, icon, delta]) => (
+              <KpiToggle key={key} label={label} value={value} hint={hint} tone={tone} icon={icon} delta={delta} active={openKpi === key} controls={`kpi-${key}`} onToggle={() => setOpenKpi(openKpi === key ? null : key)} />
+            ))}
+          </div>
+
+          {openKpi && (
+            <section id={`kpi-${openKpi}`} className="step-anim mt-3 rounded-2xl border border-line bg-white p-5 shadow-[0_22px_44px_-34px_rgba(6,45,87,0.6)] sm:p-6" aria-label={`${openKpi} details`}>
+              {openKpi === "registrations" && (
+                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    {[["Total", d.apps.length], ["Last 30 days", d.last30], ["Previous 30", d.prev30]].map(([k, v]) => (
+                      <div key={k as string} className="rounded-xl bg-bone px-2 py-4"><b className="block text-2xl tabular-nums text-forest-900">{v as number}</b><span className="text-[11px] font-semibold uppercase tracking-wider text-ink-3">{k}</span></div>
+                    ))}
+                  </div>
+                  <div><p className="mb-3 text-sm font-bold text-forest-900">Who is registering</p><BarList rows={d.type.slice(0, 5).map((r) => ({ ...r, color: "#2f6fc4" }))} /></div>
+                </div>
+              )}
+              {openKpi === "verified" && (
+                <div className="flex flex-wrap items-center gap-8">
+                  <Ring value={d.verified} label="verified" />
+                  <div className="min-w-[220px] flex-1">
+                    <p className="mb-3 text-sm font-bold text-forest-900">Verified by type</p>
+                    <BarList rows={Object.entries(d.apps.filter((a) => a.status === "Approved").reduce<Record<string, number>>((m, a) => ((m[a.type] = (m[a.type] ?? 0) + 1), m), {})).map(([label, value]) => ({ label, value, color: "#12743f" })).sort((a, b) => b.value - a.value).slice(0, 5)} />
+                  </div>
+                </div>
+              )}
+              {(openKpi === "decision" || openKpi === "appeals") && (() => {
+                const list = (openKpi === "decision" ? d.apps.filter((a) => ["Under review", "Endorsed"].includes(a.status)) : d.apps.filter((a) => a.appeal && ["Rejected", "Suspended"].includes(a.status)))
+                  .sort((a, b) => a.createdAt.localeCompare(b.createdAt)).slice(0, 6);
+                return list.length === 0 ? (
+                  <p className="flex items-center gap-2 text-sm text-forest-800"><CheckCircle2 size={16} /> Nothing waiting here.</p>
+                ) : (
+                  <>
+                    <p className="mb-3 text-sm font-bold text-forest-900">{openKpi === "decision" ? "Oldest first: waiting for a decision" : "Appeals to answer"}</p>
+                    <ul className="divide-y divide-line">
+                      {list.map((a) => (
+                        <li key={a.id}>
+                          <Link href={`/console/applications?status=${encodeURIComponent(a.status)}`} className="group flex flex-wrap items-center justify-between gap-2 py-3">
+                            <span className="min-w-0"><b className="block truncate text-sm text-forest-900">{a.clubName || a.name}</b><span className="text-xs text-ink-3">{a.type} · {SPORT_BY_ID[a.sport]?.name ?? a.sport} · {a.place.county}</span></span>
+                            <span className="flex items-center gap-3 text-xs text-ink-3"><span className="rounded-full bg-bone px-2.5 py-1 font-semibold text-ink-2">{a.status}</span>{Math.max(0, Math.floor((nowMs - new Date(a.createdAt).getTime()) / DAY))} days<ArrowRight size={14} className="transition group-hover:translate-x-1" /></span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                );
+              })()}
+              {openKpi === "fees" && (
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div>
+                    <p className="mb-3 text-sm font-bold text-forest-900">Collected and still pending</p>
+                    <StackedBar parts={[{ label: "Collected", value: d.revenue, color: "#12743f" }, { label: "Pending", value: d.outstanding, color: "#d99a00" }]} />
+                  </div>
+                  <div>
+                    <p className="mb-3 text-sm font-bold text-forest-900">Fees by registration type</p>
+                    <BarList rows={Object.entries(state.applications.filter((a) => a.payment.status === "Paid").reduce<Record<string, number>>((m, a) => ((m[a.type] = (m[a.type] ?? 0) + a.payment.amount), m), {})).map(([label, value]) => ({ label, value, color: "#12743f" })).sort((a, b) => b.value - a.value).slice(0, 5)} />
+                    <Link href="/console/payments" className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-forest-700 hover:underline">Open payments <ArrowRight size={14} /></Link>
+                  </div>
+                </div>
+              )}
+              {openKpi === "facilities" && (
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div><p className="mb-3 text-sm font-bold text-forest-900">Verification status</p><StackedBar parts={d.facStatus} /></div>
+                  <div>
+                    <p className="mb-3 text-sm font-bold text-forest-900">Counties with most facilities</p>
+                    <BarList rows={Object.entries(d.facs.reduce<Record<string, number>>((m, f) => ((m[f.place.county] = (m[f.place.county] ?? 0) + 1), m), {})).map(([label, value]) => ({ label, value, color: "#0b4f8a" })).sort((a, b) => b.value - a.value).slice(0, 5)} />
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+        </>
       )}
 
       {showApps && (

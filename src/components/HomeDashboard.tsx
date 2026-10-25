@@ -34,14 +34,14 @@ export function HomeDashboard() {
             <button onClick={() => setSport(null)} className="font-bold underline underline-offset-4">Clear</button>
           </p>
         )}
-        <div className="grid items-stretch gap-5 xl:grid-cols-[minmax(340px,0.95fr)_minmax(0,1.7fr)_minmax(300px,0.85fr)]">
+        <div className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-[minmax(340px,0.95fr)_minmax(0,1.7fr)_minmax(300px,0.85fr)]">
           <div id="register" className="scroll-mt-28">
             <Suspense fallback={<BlockLoader label="Preparing registration" />}>
               <RegistrationFlow compact presetSport={sport} />
             </Suspense>
           </div>
 
-          <div id="facilities" className="scroll-mt-28">
+          <div id="facilities" className="scroll-mt-28 xl:self-start">
             <FacilityMapPanel sportId={sport} />
           </div>
 

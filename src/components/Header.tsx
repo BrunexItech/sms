@@ -81,7 +81,7 @@ export function Header() {
       </div>
 
       <div className={`glass border-b transition-shadow ${scrolled ? "border-line shadow-[0_8px_24px_-18px_rgba(6,45,87,0.5)]" : "border-line"}`}>
-        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-5 py-2.5">
+        <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-2 px-5 py-2.5 sm:gap-4">
           <Link href="/" aria-label="Ministry of Sports, home" className="shrink-0">
             <Logo />
           </Link>
@@ -118,7 +118,7 @@ export function Header() {
           </nav>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             {!searching && (
               <button onClick={() => setSearching(true)} aria-label="Search" className="hidden h-10 w-10 place-items-center rounded-lg text-forest-900 hover:bg-forest-100 sm:grid">
                 <Search size={19} />
@@ -128,9 +128,9 @@ export function Header() {
             <Link href={account.href} className="hidden items-center gap-2 rounded-lg border border-forest-900/30 px-5 py-2.5 text-sm font-semibold text-forest-900 transition hover:bg-forest-100 sm:flex">
               {account.icon} {account.label}
             </Link>
-            <Link href="/register" className="hidden rounded-lg bg-gradient-to-b from-forest-800 to-forest-900 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(6,45,87,0.8)] transition hover:brightness-110 sm:block">
+            {!user && !member && <Link href="/register" className="hidden rounded-lg bg-gradient-to-b from-forest-800 to-forest-900 px-5 py-2.5 text-sm font-semibold text-white shadow-[0_8px_18px_-8px_rgba(6,45,87,0.8)] transition hover:brightness-110 sm:block">
               {lang === "sw" ? "Jisajili" : "Register"}
-            </Link>
+            </Link>}
             <button className="grid h-10 w-10 place-items-center rounded-lg border border-line xl:hidden" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-label="Toggle menu">
               {open ? <X size={18} /> : <Menu size={18} />}
             </button>
@@ -151,9 +151,9 @@ export function Header() {
                 </Link>
               ))}
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className={`mt-3 grid gap-2 ${user || member ? "grid-cols-1" : "grid-cols-2"}`}>
               <Link href={account.href} onClick={() => setOpen(false)} className="rounded-lg border border-forest-900/30 px-3 py-3 text-center font-semibold text-forest-900">{account.label}</Link>
-              <Link href="/register" onClick={() => setOpen(false)} className="rounded-lg bg-forest-900 px-3 py-3 text-center font-semibold text-white">{lang === "sw" ? "Jisajili" : "Register"}</Link>
+              {!user && !member && <Link href="/register" onClick={() => setOpen(false)} className="rounded-lg bg-forest-900 px-3 py-3 text-center font-semibold text-white">{lang === "sw" ? "Jisajili" : "Register"}</Link>}
             </div>
           </nav>
         )}

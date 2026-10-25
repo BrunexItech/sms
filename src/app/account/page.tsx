@@ -1,15 +1,12 @@
 import { AccountView } from "@/components/AccountView";
-import { PageHero, SiteShell } from "@/components/SiteShell";
+import { SiteShell } from "@/components/SiteShell";
 
 export const metadata = { title: "My registration | National Sports Registry, Kenya" };
 
 export default function AccountPage() {
   return (
     <SiteShell>
-      <PageHero plain eyebrow="My account" title={<>Your registrations, <em className="text-gold">in one place.</em></>}>
-        Track verification, pay fees, download certificates and manage your roster.
-      </PageHero>
-      <div className="bg-bone pt-12"><AccountView /></div>
+      <div className="bg-bone pt-8"><AccountView /></div>
     </SiteShell>
   );
 }

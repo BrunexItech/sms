@@ -65,7 +65,7 @@ export function FacilityMapPanel({ sportId }: { sportId: string | null }) {
     setSelected(null);
     const w = sub?.w.find((x) => x.id === wardId);
     const t = w ? { ...w, z: 14 } : sub ? { ...sub, z: 12 } : county ? { ...county, z: 9 } : null;
-    setFocus(t ? { lat: t.la, lon: t.lo, zoom: t.z, key: `s-${++seq.current}` } : { lat: 0.3, lon: 37.9, zoom: 6, key: `s-${++seq.current}` });
+    setFocus(t ? { lat: t.la, lon: t.lo, zoom: t.z, key: `s-${++seq.current}` } : { lat: 0.15, lon: 37.9, zoom: 6, key: `s-${++seq.current}` });
   };
 
   const toggle = (id: string) =>
@@ -77,7 +77,7 @@ export function FacilityMapPanel({ sportId }: { sportId: string | null }) {
     });
 
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-line bg-white p-5 shadow-[0_18px_40px_-28px_rgba(6,45,87,0.5)]">
+    <section className="flex flex-col rounded-2xl border border-line bg-white p-5 shadow-[0_18px_40px_-28px_rgba(6,45,87,0.5)]">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-forest-900">Sports Facilities Map</h2>
@@ -144,7 +144,7 @@ export function FacilityMapPanel({ sportId }: { sportId: string | null }) {
         </button>
       </div>
 
-      <div className="relative mt-4 min-h-[430px] flex-1 overflow-hidden rounded-xl border border-line">
+      <div className="relative mt-4 h-[520px] flex-none overflow-hidden rounded-xl border border-line sm:h-[640px]">
         <div className="absolute inset-0">
           <GeoMap
             className="h-full w-full"

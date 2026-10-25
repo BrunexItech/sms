@@ -11,7 +11,7 @@ const DOC_TYPES = ["Constitution", "Certificate of registration (society / compa
 
 /** Constitution and registration papers for clubs and organisations. `canEdit` is the owner only. */
 export function DocumentsPanel({ applicationId, canEdit }: { applicationId: string; canEdit: boolean }) {
-  const { refresh } = useStore();
+  const { refresh, notify } = useStore();
   const [items, setItems] = useState<Media[] | null>(null);
   const [kind, setKind] = useState(DOC_TYPES[0]);
   const [err, setErr] = useState("");
@@ -48,6 +48,7 @@ export function DocumentsPanel({ applicationId, canEdit }: { applicationId: stri
       if (file.current) file.current.value = "";
       setTick((t) => t + 1);
       await refresh();
+      notify(`${kind}: ${f.name} (${(f.size / 1048576).toFixed(1)} MB) was added. The verifying officers can now open it.`, "ok", "Document uploaded");
     } catch (e) {
       setErr(errText(e));
     } finally {
@@ -84,7 +85,7 @@ export function DocumentsPanel({ applicationId, canEdit }: { applicationId: stri
                 <span className="shrink-0 text-xs font-normal text-ink-3">{(m.size / 1048576).toFixed(1)} MB</span>
               </a>
               {canEdit && (
-                <button aria-label="Delete document" onClick={async () => { if (confirm("Delete this document?")) { await fetch(`/api/media/${m.id}`, { method: "DELETE" }); setTick((t) => t + 1); refresh(); } }} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-kenya-red hover:bg-red-50"><Trash2 size={15} /></button>
+                <button aria-label="Delete document" onClick={async () => { if (confirm("Delete this document?")) { await fetch(`/api/media/${m.id}`, { method: "DELETE" }); setTick((t) => t + 1); refresh(); notify("The document was removed.", "ok", "Document deleted"); } }} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-kenya-red hover:bg-red-50"><Trash2 size={15} /></button>
               )}
             </li>
           ))}
