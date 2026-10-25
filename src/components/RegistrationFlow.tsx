@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CheckCircle2, Info } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, Check, CheckCircle2, Info, Landmark, ShieldCheck, UserRound, Users } from "lucide-react";
 import { SPORT_BY_ID } from "@/data/sports";
 import { emptyPlace } from "@/lib/admin";
 import { api } from "@/lib/api";
@@ -29,7 +29,6 @@ import { PayBox } from "./PayBox";
 
 const STEPS = ["Details", "Location", "Sports Details", "Review"] as const;
 
-const REG_NO_TYPES: StakeholderType[] = ["Club", "Academy", "Federation / Association", "County Branch"];
 /** Organisations that name a president, secretary and treasurer. */
 const OFFICIAL_TYPES: StakeholderType[] = ["Club", "Federation / Association", "County Branch"];
 /** Entry points shown first; every other type sits under "Coach, official or other". */
@@ -40,6 +39,14 @@ const ENTRY: [StakeholderType, string][] = [
   ["Player / Sportsperson", "A player"],
 ];
 const isEntry = (t: StakeholderType) => ENTRY.some(([e]) => e === t);
+const OTHER_KEY = "__other";
+const ENTRY_META: Record<string, { icon: typeof Landmark; blurb: string }> = {
+  "Federation / Association": { icon: Landmark, blurb: "Governing body of a sport" },
+  "County Branch": { icon: Building2, blurb: "County arm of a national federation" },
+  Club: { icon: ShieldCheck, blurb: "Club, academy or team" },
+  "Player / Sportsperson": { icon: UserRound, blurb: "An individual athlete" },
+  [OTHER_KEY]: { icon: Users, blurb: "Coaches, referees, scouts, staff, businesses" },
+};
 
 export const ORG_TYPES: StakeholderType[] = [
   "Club",
@@ -100,8 +107,8 @@ function validate(step: number, f: Form, needPassword = false): Errors {
   if (step === 1) {
     const org = ORG_TYPES.includes(f.type);
     if (org && f.clubName.trim().length < 3) e.clubName = "Enter the organisation name.";
-    if (REG_NO_TYPES.includes(f.type) && !/^[A-Za-z0-9][A-Za-z0-9 /._-]{2,39}$/.test(f.orgRegNo.trim()))
-      e.orgRegNo = "Enter the registration number on your certificate.";
+    if (f.orgRegNo.trim() && !/^[A-Za-z0-9][A-Za-z0-9 /._-]{2,39}$/.test(f.orgRegNo.trim()))
+      e.orgRegNo = "Use letters, numbers, spaces and / . _ - only.";
     if (f.name.trim().split(/\s+/).length < 2) e.name = org ? "Enter the contact person's full names." : "Enter your full legal names (at least two names).";
     if (!/^[A-Za-z0-9]{6,10}$/.test(f.idNo.trim())) e.idNo = "Enter a valid National ID or passport number.";
     if ((f.kra.trim() || !ORG_TYPES.includes(f.type)) && !/^[AP]\d{9}[A-Z]$/i.test(f.kra.trim())) e.kra = "KRA PIN looks like A012345678Z.";
@@ -337,13 +344,40 @@ export function RegistrationFlow({
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2">
                 <span className="mb-1.5 block text-[13px] font-semibold">I am registering as</span>
-                <div role="radiogroup" className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                  {ENTRY.map(([t, label]) => (
-                    <button key={t} type="button" role="radio" aria-checked={form.type === t} onClick={() => { setForm((f) => ({ ...f, type: t, role: "", parentId: "" })); setErrors({}); }}
-                      className={`rounded-xl border px-3 py-2.5 text-sm font-bold transition ${form.type === t ? "border-forest-700 bg-forest-100 text-forest-900" : "border-line bg-white text-ink-2 hover:border-forest-700/50"}`}>{label}</button>
-                  ))}
-                  <button type="button" role="radio" aria-checked={!isEntry(form.type)} onClick={() => { setForm((f) => ({ ...f, type: isEntry(f.type) ? "Coach" : f.type, role: "", parentId: "" })); setErrors({}); }}
-                    className={`rounded-xl border px-3 py-2.5 text-sm font-bold transition ${!isEntry(form.type) ? "border-forest-700 bg-forest-100 text-forest-900" : "border-line bg-white text-ink-2 hover:border-forest-700/50"}`}>Coach, official or other</button>
+                <div role="radiogroup" aria-label="I am registering as" className="@container">
+                  <div className="grid grid-cols-1 gap-2 @md:grid-cols-2">
+                    {[...ENTRY, [OTHER_KEY, "Coach, official or other"] as [string, string]].map(([t, label], k, all) => {
+                      const on = t === OTHER_KEY ? !isEntry(form.type) : form.type === t;
+                      const Icon = ENTRY_META[t].icon;
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          role="radio"
+                          aria-checked={on}
+                          onClick={() => {
+                            setForm((f) => ({ ...f, type: t === OTHER_KEY ? (isEntry(f.type) ? "Coach" : f.type) : (t as StakeholderType), role: "", parentId: "" }));
+                            setErrors({});
+                          }}
+                          className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border px-3.5 py-2.5 text-left transition ${
+                            on ? "border-forest-700 bg-forest-100/70 shadow-[0_10px_24px_-18px_rgba(6,45,87,0.8)]" : "border-line bg-white hover:border-forest-700/50 hover:bg-bone"
+                          } ${k === all.length - 1 && all.length % 2 === 1 ? "@md:col-span-2" : ""}`}
+                        >
+                          <span aria-hidden className={`absolute inset-y-0 left-0 w-1 transition ${on ? "bg-forest-700" : "bg-transparent"}`} />
+                          <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg transition ${on ? "bg-forest-800 text-white" : "bg-forest-100 text-forest-800 group-hover:bg-forest-200"}`}>
+                            <Icon size={19} strokeWidth={1.8} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-extrabold leading-tight text-forest-900">{label}</span>
+                            <span className="mt-0.5 block text-[12px] leading-snug text-ink-3">{ENTRY_META[t].blurb}</span>
+                          </span>
+                          <span aria-hidden className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 transition ${on ? "border-forest-700 bg-forest-700 text-white" : "border-line text-transparent"}`}>
+                            <Check size={12} strokeWidth={3.5} />
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
                 {!isEntry(form.type) && (
                   <select aria-label="Type" className={`${inputCls} mt-2`} value={form.type}
@@ -358,8 +392,8 @@ export function RegistrationFlow({
                   <Field label={`${form.type === "Club" ? "Club" : form.type === "Federation / Association" ? "Federation" : form.type === "County Branch" ? "Branch" : "Organisation"} name`} required error={errors.clubName} className="sm:col-span-2" hint="Names are checked for uniqueness before approval.">
                     <input className={inputCls} placeholder={form.type === "Federation / Association" ? "e.g. Kenya Volleyball Federation" : form.type === "County Branch" ? "e.g. Nakuru County Volleyball Association" : "e.g. Kibera Stars FC"} value={form.clubName} onChange={(e) => set("clubName", e.target.value)} />
                   </Field>
-                  <Field label="Registration number" required={REG_NO_TYPES.includes(form.type)} error={errors.orgRegNo}
-                    hint="From your Registrar of Societies, company or Sports Registrar certificate.">
+                  <Field label="Registration number (optional)" error={errors.orgRegNo}
+                    hint="If you have one: Registrar of Societies, company or Sports Registrar certificate. You can add it later.">
                     <input className={inputCls} placeholder="e.g. SOC/2019/04512" value={form.orgRegNo} onChange={(e) => set("orgRegNo", e.target.value)} />
                   </Field>
                   <Field label="Organisation KRA PIN (optional)" error={errors.kra}>

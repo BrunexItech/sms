@@ -356,7 +356,9 @@ def test_public_club_register_and_player_roles(client_factory, staff):
 
 def test_organisation_registration_number_and_contact_person(client_factory):
     base = dict(type="Club", clubName="Reg Number FC", sport="football", clubOfficials=OFFICIALS, kra="")
-    assert client_factory().post("/api/registrations", json=body(**base, orgRegNo="")).status_code == 422
+    # optional: a club without a certificate yet can still register, but a malformed number is refused
+    assert client_factory().post("/api/registrations", json=body(**base, orgRegNo="")).status_code == 201
+    assert client_factory().post("/api/registrations", json=body(**{**base, "clubName": "Bad Number FC"}, orgRegNo="@@")).status_code == 422
     ok = client_factory().post("/api/registrations", json=body(**base))
     assert ok.status_code == 201, ok.text
     assert ok.json()["application"]["orgRegNo"] == "SOC/2020/1234"

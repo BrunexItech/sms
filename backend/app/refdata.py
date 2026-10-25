@@ -86,8 +86,6 @@ STAKEHOLDER_TYPES = [
 ]
 # Individuals who register in a specific role from the role catalogue.
 PERSONNEL_TYPES = {"Technical Team", "Coach", "Scout", "Match / Competition Official", "Health & Welfare Staff", "Operations & Admin Staff"}
-# Legal entities that must quote the certificate they were registered under.
-REG_NO_TYPES = {"Club", "Academy", "Federation / Association", "County Branch"}
 # Organisations that must name a president/chair, secretary and treasurer.
 OFFICIAL_TYPES = {"Club", "Federation / Association", "County Branch"}
 ORG_TYPES = {"Club", "Academy", "Technical Team", "Sports Business", "Facility Operator", "Event Organiser",

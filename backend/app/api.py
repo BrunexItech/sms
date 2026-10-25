@@ -132,8 +132,9 @@ def new_app(db: Session, d, owner: User, place: dict, status_by: str, *, club_id
     if d.type in R.ORG_TYPES and len((d.club_name or "").strip()) < 3:
         err(422, "Enter the organisation name.")
     reg_no = (d.org_reg_no or "").strip()
-    if d.type in R.REG_NO_TYPES and not re.match(r"^[A-Za-z0-9][A-Za-z0-9 /._-]{2,39}$", reg_no):
-        err(422, "Enter the organisation's registration number (Registrar of Societies, company or Sports Registrar certificate).")
+    # optional: many clubs are not yet registered with the Registrar of Societies; if given it must look like a number
+    if reg_no and not re.match(r"^[A-Za-z0-9][A-Za-z0-9 /._-]{2,39}$", reg_no):
+        err(422, "Check the registration number: use letters, numbers, spaces, / . _ - only.")
     parent_id = None
     if d.type == "County Branch":
         parent = db.get(Application, d.parent_id or "")
