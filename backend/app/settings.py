@@ -22,6 +22,10 @@ MPESA_READY = PAYMENT_PROVIDER == "mpesa" and all([MPESA_CONSUMER_KEY, MPESA_CON
 # Simulated payment: no money moves. On by default in production until M-Pesa is live (SIMULATE_PAYMENTS=0 turns it off).
 SIMULATE_PAYMENTS = (not MPESA_READY) and os.getenv("SIMULATE_PAYMENTS", "1" if PRODUCTION else "0") == "1"
 
+# Optional reader for scanned paper records (free, self-hosted). Without a key the import screen works by hand.
+OCR_URL = os.getenv("OCR_URL", "https://ocr.oqtekal.com").rstrip("/")
+OCR_API_KEY = os.getenv("OCR_API_KEY", "")
+
 SMTP_HOST = os.getenv("SMTP_HOST", "")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")

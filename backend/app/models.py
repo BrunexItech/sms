@@ -80,6 +80,8 @@ class Application(Base):
     media_request: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     role: Mapped[str | None] = mapped_column(String, nullable=True)  # role catalogue id
     public_listed: Mapped[bool] = mapped_column(Boolean, default=False)  # shown on the club's public page
+    legacy: Mapped[bool] = mapped_column(Boolean, default=False)  # imported from a paper record
+    legacy_cert_no: Mapped[str] = mapped_column(String, default="")  # certificate number printed on the paper record
     address: Mapped[str] = mapped_column(String, default="")  # head-office town / street (national bodies)
     org_reg_no: Mapped[str] = mapped_column(String, default="")  # society / company / registrar certificate number
     sport_other: Mapped[str] = mapped_column(String, default="")  # name given when the sport is "other"
@@ -102,6 +104,25 @@ class Media(Base):
     path: Mapped[str] = mapped_column(String)
     uploader_id: Mapped[str] = mapped_column(String)
     created_at: Mapped[str] = mapped_column(String)
+
+
+class LegacyImport(Base):
+    """One scanned paper record waiting for an officer's check. Nothing here is a registration until imported."""
+    __tablename__ = "legacy_imports"
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    doc_type: Mapped[str] = mapped_column(String)  # player | club
+    status: Mapped[str] = mapped_column(String, default="Pending", index=True)  # Pending | Imported | Rejected
+    file_name: Mapped[str] = mapped_column(String, default="")
+    mime: Mapped[str] = mapped_column(String, default="")
+    size: Mapped[int] = mapped_column(Integer, default=0)
+    path: Mapped[str] = mapped_column(String, default="")
+    fields: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # the officer's working values
+    ocr: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # what the reader suggested, with confidence
+    application_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    note: Mapped[str] = mapped_column(String, default="")
+    created_by: Mapped[str] = mapped_column(String, default="")
+    created_at: Mapped[str] = mapped_column(String, default="")
+    updated_at: Mapped[str] = mapped_column(String, default="")
 
 
 class Facility(Base):

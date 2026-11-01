@@ -1,0 +1,5 @@
+{
+  "_help": "Zones for each paper form layout, in pixels of the scanned page: {key, x, y, width, height, expected_script, normalize}. Add a template once a standard form has been measured. Without a template the reader is skipped and the officer keys the form by hand.",
+  "player": { "zones": [] },
+  "club": { "zones": [] }
+}

@@ -506,3 +506,57 @@ def test_registrar_publishes_official_event_directly(client_factory, staff):
     listed = client_factory().get("/api/bootstrap?facilities=0").json()["events"]
     assert any(e["name"] == "National Sports Day 2027" and e["organiser"] == "Ministry of Sports" for e in listed)
     assert staff("registrar@sports.example.ke").post("/api/events/official", json={**ev, "date": "2020-01-01"}).status_code == 422
+
+
+def _scan(c, doc_type="player"):
+    r = c.post("/api/imports", data={"doc_type": doc_type}, files={"file": ("form.png", PNG, "image/png")})
+    assert r.status_code == 201, r.text
+    return r.json()["import"]
+
+
+def test_paper_record_import_player_and_club(client_factory, staff):
+    nbo = staff("nairobi.sports@sports.example.ke")
+    reg = staff("registrar@sports.example.ke")
+    c = next(x for x in R.admin()["counties"] if x["n"] == "Nairobi")
+    s = c["s"][0]
+    assert client_factory().post("/api/imports", data={"doc_type": "player"}, files={"file": ("f.png", PNG, "image/png")}).status_code == 401
+    assert nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("f.exe", b"MZ" + b"0" * 40, "application/octet-stream")}).status_code == 422
+
+    rec = _scan(nbo)
+    assert rec["status"] == "Pending" and rec["readerOn"] is False  # no reader key in tests: entered by hand
+    messy = {"name": "JOHN KAMAU MWANGI", "id_no": "ID No: 34567891", "phone": "0712 345 678", "dob": "15/04/1990", "gender": "Male",
+             "sport": "Athletics", "level": "Amateur", "county": "nairobi COUNTY", "sub_county": s["n"], "ward": s["w"][0]["n"],
+             "kra": "a 123456789 z", "certificate_number": "OLD/1999/55"}
+    saved = nbo.put(f"/api/imports/{rec['id']}", json={"fields": messy}).json()["import"]
+    assert saved["cleaned"]["phone"] == "+254712345678" and saved["cleaned"]["dob"] == "1990-04-15" and saved["cleaned"]["kra"] == "A123456789Z"
+    assert saved["cleaned"]["id_no"] == "34567891" and saved["cleaned"]["sport"] == "athletics" and saved["place"]["wardId"]
+    assert not saved["warnings"]
+    done = nbo.post(f"/api/imports/{rec['id']}/import")
+    assert done.status_code == 200, done.text
+    app_id = done.json()["applicationId"]
+    got = next(a for a in reg.get("/api/bootstrap?facilities=0").json()["applications"] if a["id"] == app_id)
+    assert got["legacy"] is True and got["legacyCertNo"] == "OLD/1999/55" and got["status"] == "Submitted"
+    assert got["payment"]["status"] == "Paid" and got["payment"]["amount"] == 0 and got["idNo"] == "34567891"
+    assert not got.get("publicListed")  # legacy players stay off public club pages until they opt in
+    # the same ID in the same sport cannot be imported twice
+    again = _scan(nbo)
+    nbo.put(f"/api/imports/{again['id']}", json={"fields": messy})
+    assert nbo.post(f"/api/imports/{again['id']}/import").status_code == 409
+    assert nbo.post(f"/api/imports/{again['id']}/reject", json={"note": "duplicate"}).json()["import"]["status"] == "Rejected"
+    # a county officer cannot import a record from another county; the Registrar can
+    ug = next(x for x in R.admin()["counties"] if x["n"] == "Uasin Gishu")
+    far = _scan(nbo)
+    nbo.put(f"/api/imports/{far['id']}", json={"fields": {**messy, "id_no": "45678912", "county": "Uasin Gishu", "sub_county": ug["s"][0]["n"], "ward": ug["s"][0]["w"][0]["n"]}})
+    assert nbo.post(f"/api/imports/{far['id']}/import").status_code == 403
+    # county officers see their own uploads only; the Registrar sees all
+    assert far["id"] not in [x["id"] for x in staff("uasingishu.sports@sports.example.ke").get("/api/imports").json()["imports"]]
+    assert far["id"] in [x["id"] for x in reg.get("/api/imports").json()["imports"]]
+    assert reg.post(f"/api/imports/{far['id']}/import").status_code == 200
+    # a club needs its three officials
+    club = _scan(reg, "club")
+    base = {"club_name": "Old Paper Club", "name": "Mary Wanjiru Njeri", "id_no": "23456789", "phone": "0722111222", "sport": "football",
+            "county": "Nairobi", "sub_county": s["n"], "ward": s["w"][0]["n"], "chair_name": "Peter Otieno", "secretary_name": "Jane Achieng"}
+    reg.put(f"/api/imports/{club['id']}", json={"fields": base})
+    assert reg.post(f"/api/imports/{club['id']}/import").status_code == 422
+    reg.put(f"/api/imports/{club['id']}", json={"fields": {**base, "treasurer_name": "Samuel Kiprop"}})
+    assert reg.post(f"/api/imports/{club['id']}/import").status_code == 200

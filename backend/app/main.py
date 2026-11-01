@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from . import models  # noqa: F401  (register tables)
 from . import settings
 from .api import router
+from .imports import router as imports_router
 from .api2 import router as router2
 from .db import Base, SessionLocal, engine
 from . import rbac
@@ -36,3 +37,4 @@ if origins:
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 app.include_router(router)
 app.include_router(router2)
+app.include_router(imports_router)
