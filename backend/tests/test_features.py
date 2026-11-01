@@ -581,3 +581,47 @@ def test_reader_status_never_exposes_the_key(staff, monkeypatch):
     assert res.json()["ok"] is True and "oqk_secret_value" not in res.text and seen["h"]["X-API-Key"] == "oqk_secret_value"
     R.status_code = 401
     assert nbo.get("/api/imports/reader/status").json()["ok"] is False
+
+
+def test_label_reader_takes_values_from_printed_labels():
+    from app import label_reader as L
+    def line(t, x, y, w=300, c=0.95):
+        return {"text": t, "confidence": c, "bbox": [x, y, w, 30]}
+    lines = [
+        line("PLAYER REGISTRATION FORM", 60, 20),
+        line("Full names: JOHN KAMAU MWANGI", 60, 100),
+        line("ID No: 34567891", 60, 150),
+        line("Date of birth", 60, 200, 160), line("15/04/1990", 260, 200, 150),   # value to the right
+        line("Phone", 60, 250, 100), line("0712 345 678", 60, 285, 180),          # value just below
+        line("Sport: Athletics", 60, 340),
+        line("County: Nairobi", 60, 390),
+        line("Parent / Guardian name: Mary Mwangi", 60, 440),
+        line("Guardian phone: 0722 111 222", 60, 490),
+    ]
+    got = L.read("player", lines)
+    assert got["name"]["value"] == "JOHN KAMAU MWANGI" and got["id_no"]["value"] == "34567891"
+    assert got["dob"]["value"] == "15/04/1990" and got["phone"]["value"] == "0712 345 678"
+    assert got["sport"]["value"] == "Athletics" and got["county"]["value"] == "Nairobi"
+    assert got["guardian_name"]["value"] == "Mary Mwangi" and got["guardian_phone"]["value"] == "0722 111 222"
+    # a label with no value never invents one
+    assert "email" not in L.read("player", [line("E-mail", 60, 100)])
+    club = L.read("club", [line("Name of Club: Kibera Stars FC", 60, 100), line("Treasurer: Samuel Kiprop", 60, 150), line("Treasurer phone: 0733 000 111", 60, 200)])
+    assert club["club_name"]["value"] == "Kibera Stars FC" and club["treasurer_name"]["value"] == "Samuel Kiprop" and club["treasurer_phone"]["value"] == "0733 000 111"
+
+
+def test_upload_fills_fields_from_the_readers_text(staff, monkeypatch):
+    from app import ocr_client, settings as S
+    nbo = staff("nairobi.sports@sports.example.ke")
+    monkeypatch.setattr(S, "OCR_API_KEY", "k")
+
+    class R:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self):
+            return {"lines": [{"text": "Full names: JANE ACHIENG OTIENO", "confidence": 0.93, "bbox": [60, 100, 300, 30]},
+                              {"text": "ID No: 23456789", "confidence": 0.9, "bbox": [60, 150, 300, 30]}]}
+    monkeypatch.setattr(ocr_client.requests, "post", lambda *a, **k: R())
+    rec = _scan(nbo)
+    assert rec["readerOn"] is True and rec["fields"]["name"] == "JANE ACHIENG OTIENO" and rec["suggestions"]["id_no"]["confidence"] == 0.9
+    R.status_code = 404
+    assert _scan(nbo)["readerOn"] is False  # text service missing: officer keys by hand, nothing breaks

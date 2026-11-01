@@ -8,6 +8,7 @@ from pathlib import Path
 
 import requests
 
+from . import label_reader
 from . import settings as C
 
 TEMPLATES = Path(__file__).resolve().parent.parent / "data" / "import_templates.json"
@@ -34,13 +35,31 @@ def status() -> dict:
     return {"configured": True, "ok": ok, "message": "Reader connected." if ok else f"The reader answered with an error ({r.status_code})."}
 
 
+def read_by_labels(doc_type: str, image: bytes, file_name: str, mime: str) -> dict:
+    """No template for this layout: read all the text, then take each value from its printed label."""
+    try:
+        r = requests.post(f"{C.OCR_URL}/api/documents/ocr-text", headers={"X-API-Key": C.OCR_API_KEY},
+                          files={"file": (file_name, image, mime)}, timeout=90)
+        if r.status_code in (404, 405, 501):
+            return {"available": False, "fields": {}, "message": "The reader cannot read whole pages yet. Enter the fields by hand."}
+        r.raise_for_status()
+        lines = r.json().get("lines", [])
+    except (requests.RequestException, ValueError) as e:
+        return {"available": False, "fields": {}, "message": f"The reader could not be reached ({type(e).__name__}). Enter the fields by hand."}
+    fields = label_reader.read(doc_type, lines)
+    msg = "" if fields else "The reader found no labelled fields on this scan. Enter them by hand."
+    return {"available": bool(fields), "fields": fields, "message": msg}
+
+
 def prefill(doc_type: str, image: bytes, file_name: str, mime: str) -> dict:
     """Suggestions per field: {"available": bool, "fields": {key: {value, confidence, script, bbox}}, "message": str}."""
     zones = zones_for(doc_type)
     if not C.OCR_API_KEY:
         return {"available": False, "fields": {}, "message": "The reader is not connected. Enter the fields by hand."}
-    if not zones or not mime.startswith("image/"):
-        return {"available": False, "fields": {}, "message": "No reading template for this form yet. Enter the fields by hand."}
+    if not mime.startswith("image/"):
+        return {"available": False, "fields": {}, "message": "Automatic reading works on images. Enter the fields from this PDF by hand."}
+    if not zones:
+        return read_by_labels(doc_type, image, file_name, mime)
     try:
         r = requests.post(f"{C.OCR_URL}/api/documents/ocr-zones", headers={"X-API-Key": C.OCR_API_KEY},
                           files={"file": (file_name, image, mime)}, data={"zones": json.dumps({"zones": zones})}, timeout=90)
