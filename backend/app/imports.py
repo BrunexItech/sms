@@ -4,6 +4,7 @@ Nothing in the holding table is a registration. Importing goes through the same 
 (duplicate IDs, valid places, club officials) and the person's record then follows normal verification.
 """
 import difflib
+import json
 import re
 from datetime import date, datetime
 from types import SimpleNamespace
@@ -16,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from . import ocr_client
 from . import refdata as R
+from . import settings as C
 from .api import MEDIA_DIR, In, PlaceIn, RegisterIn, err, hist, log, need_user, new_app, now, place_or_422, sniff
 from .db import get_db
 from .models import Application, LegacyImport, Setting, User
@@ -211,6 +213,23 @@ def out(r: LegacyImport) -> dict:
 
 
 # ───────────── routes ─────────────
+class EmbedIn(In):
+    doc_type: str = "player"
+
+
+@router.post("/reader/embed")
+def reader_embed(d: EmbedIn, u: User = Depends(staff_user)):
+    """Address of the reader's own scanner (camera, preview, fields) to show inside our page."""
+    if d.doc_type not in DOC_TYPES:
+        err(422, "Choose player or club.")
+    token = ocr_client.embed_token()
+    if not token:
+        err(503, "The reader's scanner is not available. Upload a scan or take a photo instead.")
+    from urllib.parse import quote
+    kind = C.OCR_KIND_PLAYER if d.doc_type == "player" else C.OCR_KIND_CLUB
+    return {"url": f"{C.OCR_URL}/embed/scan?token={quote(token)}&kind={quote(kind)}&parentOrigin={quote(C.PUBLIC_URL)}", "origin": C.OCR_URL}
+
+
 @router.get("/reader/status")
 def reader_status(u: User = Depends(staff_user)):
     return ocr_client.status()
@@ -223,7 +242,8 @@ def list_imports(status: str = "", db: Session = Depends(get_db), u: User = Depe
 
 
 @router.post("", status_code=201)
-async def upload(doc_type: str = Form(...), file: UploadFile = File(...), db: Session = Depends(get_db), u: User = Depends(staff_user)):
+async def upload(doc_type: str = Form(...), file: UploadFile = File(...), scanned: str = Form(""),
+                 db: Session = Depends(get_db), u: User = Depends(staff_user)):
     if doc_type not in DOC_TYPES:
         err(422, "Choose the type of paper form: player or club.")
     data = await file.read(MAX_SCAN + 1)
@@ -236,7 +256,14 @@ async def upload(doc_type: str = Form(...), file: UploadFile = File(...), db: Se
     MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     path = MEDIA_DIR / f"import-{iid}"
     path.write_bytes(data)
-    sug = ocr_client.prefill(doc_type, data, (file.filename or "scan")[:120], found[1])
+    if scanned:  # the reader's own scanner already read the page: use its fields
+        try:
+            fields = ocr_client.map_scanner_fields(json.loads(scanned))
+        except ValueError:
+            fields = {}
+        sug = {"available": bool(fields), "fields": fields, "message": "" if fields else "The scanner found no fields on this page. Enter them by hand."}
+    else:
+        sug = ocr_client.prefill(doc_type, data, (file.filename or "scan")[:120], found[1])
     t = now()
     r = LegacyImport(id=iid, doc_type=doc_type, file_name=(file.filename or "scan")[:120], mime=found[1], size=len(data), path=str(path),
                      fields={k: v["value"] for k, v in sug["fields"].items()}, ocr=sug, created_by=u.id, created_at=t, updated_at=t)

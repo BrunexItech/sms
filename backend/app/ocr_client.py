@@ -21,6 +21,57 @@ def zones_for(doc_type: str) -> list[dict]:
         return []
 
 
+# The reader's scanner names fields its own way; map them onto ours. Anything unknown is ignored.
+ALIASES = {
+    "full_name": "name", "name": "name", "holder_name": "name", "player_name": "name", "contact_person": "name", "contact_name": "name",
+    "id_number": "id_no", "id_no": "id_no", "national_id": "id_no", "passport_number": "id_no", "contact_id_number": "id_no",
+    "date_of_birth": "dob", "dob": "dob", "birth_date": "dob", "sex": "gender", "gender": "gender",
+    "kra_pin": "kra", "kra": "kra", "phone": "phone", "phone_number": "phone", "mobile": "phone", "telephone": "phone", "email": "email",
+    "sport": "sport", "level": "level", "competition_level": "level", "county": "county", "sub_county": "sub_county", "constituency": "sub_county", "ward": "ward",
+    "club_name": "club_name", "organisation_name": "club_name", "organization_name": "club_name", "team": "club_name",
+    "registration_number": "org_reg_no", "org_reg_no": "org_reg_no", "certificate_number": "certificate_number", "cert_no": "certificate_number",
+    "guardian_name": "guardian_name", "guardian_phone": "guardian_phone", "guardian_relationship": "guardian_relationship",
+    "chairperson_name": "chair_name", "chairperson_phone": "chair_phone", "secretary_name": "secretary_name", "secretary_phone": "secretary_phone",
+    "treasurer_name": "treasurer_name", "treasurer_phone": "treasurer_phone",
+}
+
+
+def map_scanner_fields(raw) -> dict:
+    """Fields posted back by the reader's embedded scanner (a list of {key,value,confidence} or a key->value map) in our names."""
+    items = []
+    if isinstance(raw, dict):
+        for k, v in raw.items():
+            items.append((k, v.get("value") if isinstance(v, dict) else v, v.get("confidence") if isinstance(v, dict) else None))
+    elif isinstance(raw, list):
+        for x in raw:
+            if isinstance(x, dict):
+                items.append((x.get("key") or x.get("name") or "", x.get("value"), x.get("confidence")))
+    out: dict = {}
+    for k, v, c in items:
+        ours = ALIASES.get(str(k).strip().lower().replace(" ", "_").replace("-", "_"))
+        if not ours or ours in out or v in (None, ""):
+            continue
+        try:
+            conf = float(c) if c is not None else 0.8
+        except (TypeError, ValueError):
+            conf = 0.8
+        out[ours] = {"value": str(v).strip(), "confidence": round(conf, 3), "script": "printed", "bbox": None}
+    return out
+
+
+def embed_token() -> str | None:
+    """Short-lived token for the reader's embeddable scanner, or None when it is not available."""
+    if not C.OCR_API_KEY:
+        return None
+    try:
+        r = requests.post(f"{C.OCR_URL}/api/embed/token", headers={"X-API-Key": C.OCR_API_KEY}, timeout=15)
+        r.raise_for_status()
+        j = r.json()
+    except (requests.RequestException, ValueError):
+        return None
+    return j.get("token") or j.get("access_token")
+
+
 def status() -> dict:
     """Is the reader reachable with our key? Never reveals the key."""
     if not C.OCR_API_KEY:

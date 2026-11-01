@@ -678,3 +678,32 @@ def test_a_confident_scan_is_registered_without_anyone_typing(staff, monkeypatch
     off = nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("d.png", PNG, "image/png")}).json()
     assert off["autoImported"] is False and off["import"]["status"] == "Pending"
     assert admin.put("/api/imports/rule", json={"auto": True, "minConfidence": 0.85}).status_code == 200
+
+
+def test_embedded_scanner_token_and_fields(staff, monkeypatch):
+    from app import ocr_client, settings as S
+    nbo = staff("nairobi.sports@sports.example.ke")
+    assert nbo.post("/api/imports/reader/embed", json={"docType": "player"}).status_code == 503  # no key: nothing to open
+    monkeypatch.setattr(S, "OCR_API_KEY", "oqk_secret")
+
+    class Rsp:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return {"token": "short-lived-token"}
+    seen = {}
+    def fake_post(url, headers=None, **k):
+        seen["url"], seen["key"] = url, (headers or {}).get("X-API-Key")
+        return Rsp()
+    monkeypatch.setattr(ocr_client.requests, "post", fake_post)
+    res = nbo.post("/api/imports/reader/embed", json={"docType": "player"})
+    assert res.status_code == 200 and "short-lived-token" in res.json()["url"] and "/embed/scan?" in res.json()["url"]
+    assert "oqk_secret" not in res.text and seen["url"].endswith("/api/embed/token") and seen["key"] == "oqk_secret"
+
+    # what the scanner posts back (list or map, its own key names) becomes our fields, ready for Approve
+    import json as _j
+    scanned = _j.dumps([{"key": "full_name", "value": "PETER OTIENO", "confidence": 0.9}, {"key": "id_number", "value": "12345678"},
+                        {"key": "date_of_birth", "value": "01/02/1995"}, {"key": "unknown_thing", "value": "x"}])
+    r = nbo.post("/api/imports", data={"doc_type": "player", "scanned": scanned}, files={"file": ("s.png", PNG, "image/png")}).json()["import"]
+    assert r["readerOn"] and r["fields"] == {"name": "PETER OTIENO", "id_no": "12345678", "dob": "01/02/1995"}
+    assert r["suggestions"]["name"]["confidence"] == 0.9 and r["suggestions"]["id_no"]["confidence"] == 0.8
+    assert r["cleaned"]["dob"] == "1995-02-01"

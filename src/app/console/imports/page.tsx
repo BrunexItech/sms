@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Camera, Check, FileScan, RotateCw, Upload, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Camera, Check, FileScan, ScanLine, RotateCw, Upload, X, ZoomIn, ZoomOut } from "lucide-react";
 import { api, upload } from "@/lib/api";
 import { SPORTS } from "@/data/sports";
 import { errText, useStore } from "@/lib/store";
@@ -10,6 +10,7 @@ import { Field, inputCls } from "@/components/ui/Field";
 import { Pill } from "@/components/ui/Pill";
 import { BlockLoader, ButtonSpinner } from "@/components/ui/Spinner";
 import { NoAccess, PageTitle } from "@/components/console/ui";
+import { ReaderScanner } from "@/components/ReaderScanner";
 
 interface Suggestion { value: string; confidence: number; script: string }
 interface Rec {
@@ -38,6 +39,7 @@ export default function Page() {
   const [sel, setSel] = useState<string | null>(null);
   const [docType, setDocType] = useState<"player" | "club">("player");
   const [busy, setBusy] = useState("");
+  const [scanning, setScanning] = useState(false);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [warnings, setWarnings] = useState<string[]>([]);
   const [zoom, setZoom] = useState(1);
@@ -83,9 +85,12 @@ export default function Page() {
 
   if (!can("applications.review")) return <NoAccess need="applications.review" />;
 
-  const pick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
+    return processFiles(files);
+  };
+  const processFiles = async (files: File[], scanned?: string) => {
     if (!files.length) return;
     setBusy("upload");
     let auto = 0, check = 0, failed = 0;
@@ -95,6 +100,7 @@ export default function Page() {
         const fd = new FormData();
         fd.append("doc_type", docType);
         fd.append("file", f);
+        if (scanned) fd.append("scanned", scanned);
         const r = await upload<{ import: Rec; autoImported: boolean }>("/imports", fd);
         if (r.autoImported) auto++;
         else { check++; firstPending ??= r.import.id; }
@@ -178,6 +184,7 @@ export default function Page() {
 
   return (
     <>
+      {scanning && <ReaderScanner docType={docType} onClose={() => setScanning(false)} onResult={(file, fields) => { setScanning(false); processFiles([file], JSON.stringify(fields ?? [])); }} />}
       <PageTitle title="Paper records" sub="Scan old forms, check each field against the image, then import them as registrations. Nothing is registered until you press Import." />
 
       <section className="mb-5 flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-white p-4">
@@ -191,6 +198,9 @@ export default function Page() {
           {busy === "upload" ? <ButtonSpinner /> : <Upload size={16} />} Upload scans
           <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" onChange={pick} />
         </label>
+        <button type="button" onClick={() => setScanning(true)} disabled={busy === "upload"} className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-3 text-sm font-bold text-forest-950 hover:brightness-105 disabled:opacity-70">
+          <ScanLine size={16} /> Scan with the reader
+        </button>
         <label className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border border-forest-800 px-4 py-3 text-sm font-bold text-forest-800 hover:bg-forest-100 ${busy === "upload" ? "pointer-events-none opacity-70" : ""}`}>
           <Camera size={16} /> Take a photo
           <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={pick} />

@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { NextConfig } from "next";
 
+const OCR_ORIGIN = (process.env.OCR_URL ?? "https://ocr.oqtekal.com").replace(/\/$/, "");
 const API = process.env.API_URL ?? "http://127.0.0.1:8000";
 
 const nextConfig: NextConfig = {
@@ -23,7 +24,7 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "geolocation=(self), camera=(), microphone=()" },
+          { key: "Permissions-Policy", value: `geolocation=(self), camera=(self "${OCR_ORIGIN}"), microphone=()` },
         ],
       },
     ];
