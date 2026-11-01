@@ -226,8 +226,11 @@ def reader_embed(d: EmbedIn, u: User = Depends(staff_user)):
     if not token:
         err(503, "The reader's scanner is not available. Upload a scan or take a photo instead.")
     from urllib.parse import quote
-    kind = C.OCR_KIND_PLAYER if d.doc_type == "player" else C.OCR_KIND_CLUB
-    return {"url": f"{C.OCR_URL}/embed/scan?token={quote(token)}&kind={quote(kind)}&parentOrigin={quote(C.PUBLIC_URL)}", "origin": C.OCR_URL}
+    type_id = C.OCR_TYPE_PLAYER if d.doc_type == "player" else C.OCR_TYPE_CLUB
+    url = f"{C.OCR_URL}/embed/scan?token={quote(token)}&kind=document&parentOrigin={quote(C.PUBLIC_URL)}"
+    if type_id:
+        url += f"&type_id={quote(type_id)}"
+    return {"url": url, "origin": C.OCR_URL}
 
 
 @router.get("/reader/status")

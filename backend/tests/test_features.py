@@ -698,6 +698,9 @@ def test_embedded_scanner_token_and_fields(staff, monkeypatch):
     res = nbo.post("/api/imports/reader/embed", json={"docType": "player"})
     assert res.status_code == 200 and "short-lived-token" in res.json()["url"] and "/embed/scan?" in res.json()["url"]
     assert "oqk_secret" not in res.text and seen["url"].endswith("/api/embed/token") and seen["key"] == "oqk_secret"
+    monkeypatch.setattr(S, "OCR_TYPE_PLAYER", "type-123")
+    assert "&type_id=type-123" in nbo.post("/api/imports/reader/embed", json={"docType": "player"}).json()["url"]
+    assert "type_id" not in nbo.post("/api/imports/reader/embed", json={"docType": "club"}).json()["url"]
 
     # what the scanner posts back (list or map, its own key names) becomes our fields, ready for Approve
     import json as _j
