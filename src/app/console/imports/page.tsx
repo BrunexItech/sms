@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Check, FileScan, RotateCw, Upload, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Camera, Check, FileScan, RotateCw, Upload, X, ZoomIn, ZoomOut } from "lucide-react";
 import { api, upload } from "@/lib/api";
 import { SPORTS } from "@/data/sports";
 import { errText, useStore } from "@/lib/store";
@@ -190,6 +190,10 @@ export default function Page() {
         <label className={`inline-flex cursor-pointer items-center gap-2 rounded-lg bg-forest-800 px-4 py-3 text-sm font-bold text-white hover:bg-forest-900 ${busy === "upload" ? "pointer-events-none opacity-70" : ""}`}>
           {busy === "upload" ? <ButtonSpinner /> : <Upload size={16} />} Upload scans
           <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" onChange={pick} />
+        </label>
+        <label className={`inline-flex cursor-pointer items-center gap-2 rounded-lg border border-forest-800 px-4 py-3 text-sm font-bold text-forest-800 hover:bg-forest-100 ${busy === "upload" ? "pointer-events-none opacity-70" : ""}`}>
+          <Camera size={16} /> Take a photo
+          <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={pick} />
         </label>
         <p className="text-xs text-ink-3">Choose one or many files (JPG, PNG, WebP or PDF, up to 12 MB each, one form per file). The fields are read from each scan; you check them beside the image and press Approve. Scans are private.</p>
         {rule && (
