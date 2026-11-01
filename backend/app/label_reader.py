@@ -7,12 +7,12 @@ import re
 
 # field -> label patterns (matched at the start of a line, case-insensitive)
 LABELS: dict[str, list[str]] = {
-    "name": [r"full\s*names?", r"names?\s*of\s*(the\s*)?(player|athlete|applicant)", r"names?", r"jina"],
+    "name": [r"full\s*names?", r"names?\s*of\s*(the\s*)?(player|athlete|applicant)", r"contact\s*person(\s*name)?", r"names?(?!\s*of\b)", r"jina"],
     "id_no": [r"(national\s*)?id\s*(no\.?|number)", r"id\s*/\s*passport(\s*(no\.?|number))?", r"passport\s*(no\.?|number)", r"national\s*id"],
     "dob": [r"date\s*of\s*birth", r"d\.?\s*o\.?\s*b\.?", r"born"],
     "gender": [r"gender", r"sex"],
     "kra": [r"kra(\s*pin)?(\s*(no\.?|number))?", r"pin\s*(no\.?|number)"],
-    "phone": [r"(mobile|cell|tel(ephone)?|phone)(\s*(no\.?|number))?", r"contact(\s*(no\.?|number))?"],
+    "phone": [r"(mobile|cell|tel(ephone)?|phone)(\s*(no\.?|number))?", r"contact\s*(no\.?|number)"],
     "email": [r"e-?\s*mail(\s*address)?"],
     "sport": [r"sport(s)?(\s*discipline)?", r"discipline", r"game"],
     "level": [r"(competition\s*)?level", r"category"],

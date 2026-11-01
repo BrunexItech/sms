@@ -44,6 +44,22 @@ export default function Page() {
   const [turn, setTurn] = useState(0);
   const [filter, setFilter] = useState<"Pending" | "Imported" | "Rejected">("Pending");
   const [reader, setReader] = useState<{ configured: boolean; ok: boolean; message: string } | null>(null);
+  const [rule, setRule] = useState<{ auto: boolean; minConfidence: number } | null>(null);
+  useEffect(() => {
+    let off = false;
+    api<{ auto: boolean; minConfidence: number }>("/imports/rule").then((r) => !off && setRule(r)).catch(() => {});
+    return () => { off = true; };
+  }, []);
+  const toggleRule = async () => {
+    if (!rule) return;
+    try {
+      const r = await api<{ auto: boolean; minConfidence: number }>("/imports/rule", "PUT", { auto: !rule.auto, minConfidence: rule.minConfidence });
+      setRule(r);
+      notify(r.auto ? "Clear scans will be registered without a check." : "Every scan will now wait for an officer to approve it.", "ok", "Import rule changed");
+    } catch (x) {
+      notify(errText(x), "error", "Could not change the rule");
+    }
+  };
   useEffect(() => {
     let off = false;
     api<{ configured: boolean; ok: boolean; message: string }>("/imports/reader/status").then((r) => !off && setReader(r)).catch(() => {});
@@ -68,25 +84,31 @@ export default function Page() {
   if (!can("applications.review")) return <NoAccess need="applications.review" />;
 
   const pick = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (!f) return;
+    if (!files.length) return;
     setBusy("upload");
-    try {
-      const fd = new FormData();
-      fd.append("doc_type", docType);
-      fd.append("file", f);
-      const r = await upload<{ import: Rec }>("/imports", fd);
-      const list = await load();
-      const mine = list.find((x) => x.id === r.import.id) ?? r.import;
-      setFilter("Pending");
-      open(mine);
-      notify(mine.readerOn ? `${f.name} was read. Check every field against the scan.` : `${f.name} was added. Enter the fields from the scan.`, "ok", "Scan uploaded");
-    } catch (x) {
-      notify(errText(x), "error", "Upload failed");
-    } finally {
-      setBusy("");
+    let auto = 0, check = 0, failed = 0;
+    let firstPending: string | null = null;
+    for (const f of files) {
+      try {
+        const fd = new FormData();
+        fd.append("doc_type", docType);
+        fd.append("file", f);
+        const r = await upload<{ import: Rec; autoImported: boolean }>("/imports", fd);
+        if (r.autoImported) auto++;
+        else { check++; firstPending ??= r.import.id; }
+      } catch (x) {
+        failed++;
+        notify(`${f.name}: ${errText(x)}`, "error", "Upload failed");
+      }
     }
+    const list = await load();
+    if (auto) setFilter("Imported");
+    if (firstPending) { setFilter("Pending"); const m = list.find((x) => x.id === firstPending); if (m) open(m); }
+    const parts = [auto && `${auto} registered automatically`, check && `${check} need${check === 1 ? "s" : ""} a quick check`, failed && `${failed} failed`].filter(Boolean).join(", ");
+    if (auto || check) notify(`${parts}.${auto ? " Registered records still go through normal verification." : ""}`, "ok", files.length === 1 ? "Scan processed" : `${files.length} scans processed`);
+    setBusy("");
   };
 
   const save = async () => {
@@ -110,7 +132,7 @@ export default function Page() {
         if (kind === "save") notify("Your changes were saved. Come back to finish it any time.", "ok", "Draft saved");
         else {
           const r = await api<{ applicationId: string }>(`/imports/${rec.id}/import`, "POST");
-          notify(`It is now registration ${r.applicationId} and goes through normal verification.`, "ok", "Record imported");
+          notify(`It is now registration ${r.applicationId} and goes through normal verification.`, "ok", "Approved and registered");
         }
       }
       if (kind !== "save") { setSel(null); await load(); }
@@ -166,10 +188,16 @@ export default function Page() {
           </select>
         </label>
         <label className={`inline-flex cursor-pointer items-center gap-2 rounded-lg bg-forest-800 px-4 py-3 text-sm font-bold text-white hover:bg-forest-900 ${busy === "upload" ? "pointer-events-none opacity-70" : ""}`}>
-          {busy === "upload" ? <ButtonSpinner /> : <Upload size={16} />} Upload a scan
-          <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" onChange={pick} />
+          {busy === "upload" ? <ButtonSpinner /> : <Upload size={16} />} Upload scans
+          <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" onChange={pick} />
         </label>
-        <p className="text-xs text-ink-3">JPG, PNG, WebP or PDF up to 12 MB, one form per file. Scans are private and only officers can open them.</p>
+        <p className="text-xs text-ink-3">Choose one or many files (JPG, PNG, WebP or PDF, up to 12 MB each, one form per file). The fields are read from each scan; you check them beside the image and press Approve. Scans are private.</p>
+        {rule && (
+          <button type="button" onClick={toggleRule} disabled={!can("settings.manage")} aria-pressed={rule.auto} title={can("settings.manage") ? "Switch automatic registration on or off" : "Only an administrator can change this"} className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${rule.auto ? "bg-leaf/15 text-leaf" : "bg-bone text-ink-2"}`}>
+            <span aria-hidden className={`relative h-4 w-7 rounded-full transition ${rule.auto ? "bg-leaf" : "bg-ink-3/50"}`}><span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${rule.auto ? "left-3.5" : "left-0.5"}`} /></span>
+            Skip the check for clear scans: {rule.auto ? `on (${Math.round(rule.minConfidence * 100)}%+)` : "off"}
+          </button>
+        )}
         {reader && (
           <span title={reader.message} className={`ml-auto inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${reader.ok ? "bg-leaf/15 text-leaf" : "bg-bone text-ink-2"}`}>
             <span aria-hidden className={`h-2 w-2 rounded-full ${reader.ok ? "bg-leaf" : "bg-ink-3"}`} /> {reader.ok ? "Reader connected" : "Reader off: keying by hand"}
@@ -192,7 +220,7 @@ export default function Page() {
               <li key={r.id}>
                 <button onClick={() => open(r)} aria-current={sel === r.id} className={`flex w-full items-center gap-3 rounded-xl border bg-white p-3 text-left transition hover:border-forest-700/50 ${sel === r.id ? "border-forest-700" : "border-line"}`}>
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-forest-100 text-forest-800"><FileScan size={18} /></span>
-                  <span className="min-w-0 flex-1"><b className="block truncate text-sm">{r.cleaned.club_name || r.cleaned.name || r.fileName}</b><span className="text-xs text-ink-3">{r.docType === "player" ? "Player" : "Club"} · {new Date(r.createdAt).toLocaleDateString("en-KE")}</span></span>
+                  <span className="min-w-0 flex-1"><b className="block truncate text-sm">{r.cleaned.club_name || r.cleaned.name || r.fileName}</b><span className="text-xs text-ink-3">{r.docType === "player" ? "Player" : "Club"} · {new Date(r.createdAt).toLocaleDateString("en-KE")}{r.status === "Imported" && r.note === "automatically" ? " · automatic" : ""}{r.status === "Pending" && r.note ? " · needs a check" : ""}</span></span>
                   <Pill>{r.status}</Pill>
                 </button>
               </li>
@@ -224,8 +252,20 @@ export default function Page() {
               </section>
 
               <section className="min-w-0 rounded-2xl border border-line bg-white p-5">
-                <h2 className="text-base font-bold text-forest-900">Check against the scan</h2>
-                <p className="mt-1 text-xs text-ink-3">{rec.reader || "Type each value as it appears on the paper. Phone numbers, dates and IDs are tidied automatically."}</p>
+                <h2 className="text-base font-bold text-forest-900">Information read from the document</h2>
+                {(() => {
+                  const sug = Object.values(rec.suggestions);
+                  const low = sug.filter((x) => x.confidence < 0.8).length;
+                  return rec.readerOn ? (
+                    <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-3">
+                      <span className="rounded-full bg-leaf/15 px-2.5 py-1 font-bold text-leaf">{sug.length} fields read</span>
+                      {low > 0 && <span className="rounded-full bg-gold-soft px-2.5 py-1 font-bold text-forest-900">{low} to double-check</span>}
+                      Compare with the scan, correct anything, then press Approve.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-ink-3">{rec.reader || "Type each value as it appears on the paper. Phone numbers, dates and IDs are tidied automatically."}</p>
+                  );
+                })()}
                 {rec.status === "Imported" && <p className="mt-3 rounded-lg bg-leaf/10 px-3 py-2 text-sm font-semibold text-leaf">Imported as registration {rec.applicationId}.</p>}
                 {rec.status === "Rejected" && <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-kenya-red-deep">Set aside: {rec.note}</p>}
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -254,7 +294,7 @@ export default function Page() {
                 )}
                 {editable && (
                   <div className="mt-5 flex flex-wrap gap-2.5">
-                    <button onClick={() => run("import")} disabled={!!busy} className="inline-flex items-center gap-2 rounded-lg bg-leaf px-5 py-3 text-sm font-bold text-white disabled:opacity-70">{busy === "import" ? <ButtonSpinner /> : <Check size={16} />} Import as registration</button>
+                    <button onClick={() => run("import")} disabled={!!busy} className="inline-flex items-center gap-2 rounded-lg bg-leaf px-5 py-3 text-sm font-bold text-white disabled:opacity-70">{busy === "import" ? <ButtonSpinner /> : <Check size={16} />} Approve and register</button>
                     <button onClick={() => run("save")} disabled={!!busy} className="inline-flex items-center gap-2 rounded-lg border border-line px-4 py-3 text-sm font-bold text-forest-800 hover:bg-bone disabled:opacity-70">{busy === "save" ? <ButtonSpinner /> : null} Save draft</button>
                     <button onClick={() => run("reject")} disabled={!!busy} className="inline-flex items-center gap-2 rounded-lg bg-red-50 px-4 py-3 text-sm font-bold text-kenya-red-deep hover:bg-red-100 disabled:opacity-70"><X size={16} /> Set aside</button>
                   </div>

@@ -625,3 +625,56 @@ def test_upload_fills_fields_from_the_readers_text(staff, monkeypatch):
     assert rec["readerOn"] is True and rec["fields"]["name"] == "JANE ACHIENG OTIENO" and rec["suggestions"]["id_no"]["confidence"] == 0.9
     R.status_code = 404
     assert _scan(nbo)["readerOn"] is False  # text service missing: officer keys by hand, nothing breaks
+
+
+def _reader_lines(sub, ward, conf=0.95, extra=()):
+    def ln(t, i, c=conf):
+        return {"text": t, "confidence": c, "bbox": [60, 80 + i * 45, 320, 30]}
+    rows = ["Full names: JANE ACHIENG OTIENO", "ID No: 23456789", "Date of birth: 12/03/1998", "Gender: Female", "Sport: Athletics",
+            "County: Nairobi", f"Sub-county: {sub}", f"Ward: {ward}", *extra]
+    return [ln(t, i) for i, t in enumerate(rows)]
+
+
+def test_a_confident_scan_is_registered_without_anyone_typing(staff, monkeypatch):
+    from app import ocr_client, settings as S
+    nbo, admin = staff("nairobi.sports@sports.example.ke"), staff("super.admin@sports.example.ke")
+    c = next(x for x in R.admin()["counties"] if x["n"] == "Nairobi")
+    sub, ward = c["s"][0]["n"], c["s"][0]["w"][0]["n"]
+    monkeypatch.setattr(S, "OCR_API_KEY", "k")
+    lines = {"v": _reader_lines(sub, ward)}
+
+    class Rsp:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return {"lines": lines["v"]}
+    monkeypatch.setattr(ocr_client.requests, "post", lambda *a, **k: Rsp())
+
+    # by default every read waits for an officer to look at the scan and press Approve
+    first = nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("z.png", PNG, "image/png")}).json()
+    assert first["autoImported"] is False and first["import"]["status"] == "Pending" and first["import"]["fields"]["name"] == "JANE ACHIENG OTIENO"
+    assert nbo.post(f"/api/imports/{first['import']['id']}/reject", json={"note": "test"}).status_code == 200
+    # an administrator may let clear scans skip the check
+    assert admin.put("/api/imports/rule", json={"auto": True, "minConfidence": 0.85}).status_code == 200
+    res = nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("a.png", PNG, "image/png")}).json()
+    assert res["autoImported"] is True and res["applicationId"] and res["import"]["status"] == "Imported"
+    app = next(a for a in staff("registrar@sports.example.ke").get("/api/bootstrap?facilities=0").json()["applications"] if a["id"] == res["applicationId"])
+    assert app["legacy"] and app["status"] == "Submitted" and app["name"] == "Jane Achieng Otieno" and "automatically" in app["history"][-1]["action"]
+
+    # the same person again: a duplicate is never auto-imported, it waits for an officer with the reason
+    dup = nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("b.png", PNG, "image/png")}).json()
+    assert dup["autoImported"] is False and dup["import"]["status"] == "Pending" and "already registered" in dup["import"]["note"]
+
+    # a doubtful read (low confidence) waits for a check
+    lines["v"] = _reader_lines(sub, ward, conf=0.6, extra=["Email: x@y.co"])
+    lines["v"][1]["text"] = "ID No: 34567890"
+    low = nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("c.png", PNG, "image/png")}).json()
+    assert low["autoImported"] is False and low["import"]["status"] == "Pending"
+
+    # an administrator can switch automatic import off
+    lines["v"] = _reader_lines(sub, ward)
+    lines["v"][1]["text"] = "ID No: 45678901"
+    assert nbo.put("/api/imports/rule", json={"auto": False, "minConfidence": 0.85}).status_code == 403
+    assert admin.put("/api/imports/rule", json={"auto": False, "minConfidence": 0.85}).status_code == 200
+    off = nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("d.png", PNG, "image/png")}).json()
+    assert off["autoImported"] is False and off["import"]["status"] == "Pending"
+    assert admin.put("/api/imports/rule", json={"auto": True, "minConfidence": 0.85}).status_code == 200

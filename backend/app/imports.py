@@ -9,7 +9,7 @@ from datetime import date, datetime
 from types import SimpleNamespace
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,7 +18,7 @@ from . import ocr_client
 from . import refdata as R
 from .api import MEDIA_DIR, In, PlaceIn, RegisterIn, err, hist, log, need_user, new_app, now, place_or_422, sniff
 from .db import get_db
-from .models import Application, LegacyImport, User
+from .models import Application, LegacyImport, Setting, User
 from .rbac import STAFF_ROLES, can
 
 router = APIRouter(prefix="/api/imports")
@@ -26,6 +26,35 @@ router = APIRouter(prefix="/api/imports")
 MAX_SCAN = 12 * 1024 * 1024
 DOC_TYPES = ("player", "club")
 LEVEL_DEFAULT = "Amateur"
+# fields a record must have, read with enough confidence, before it is registered without an officer's check
+REQUIRED = {"player": ["name", "id_no", "dob", "gender", "sport", "county", "sub_county", "ward"],
+            "club": ["club_name", "name", "id_no", "phone", "sport", "county", "sub_county", "ward", "chair_name", "secretary_name", "treasurer_name"]}
+
+
+def auto_rule(db: Session) -> dict:
+    row = db.get(Setting, "import_rule")
+    return {"auto": False, "minConfidence": 0.85, **(row.value if row else {})}
+
+
+def try_auto(db: Session, u: User, r: LegacyImport) -> Application | None:
+    """Register the record straight away when every required field was read with high confidence and is valid.
+    Anything doubtful, a duplicate or a record outside the officer's county stays Pending for a person to check."""
+    rule = auto_rule(db)
+    sug = (r.ocr or {}).get("fields", {})
+    if not rule["auto"] or not sug:
+        return None
+    need = REQUIRED[r.doc_type]
+    fields, warnings, ids = clean(r.doc_type, r.fields or {})
+    if any(not r.fields.get(k) or float(sug.get(k, {}).get("confidence", 0)) < float(rule["minConfidence"]) for k in need):
+        return None
+    if warnings or not ids["wardId"] or any(sug.get(k, {}).get("script") == "handwritten" for k in need):
+        return None
+    try:
+        with db.begin_nested():
+            return do_import(db, u, r, "automatically")
+    except HTTPException as e:
+        r.note = f"Needs a check: {e.detail}"
+        return None
 
 
 # ───────────── cleaning (our side, whatever the reader returned) ─────────────
@@ -213,8 +242,34 @@ async def upload(doc_type: str = Form(...), file: UploadFile = File(...), db: Se
                      fields={k: v["value"] for k, v in sug["fields"].items()}, ocr=sug, created_by=u.id, created_at=t, updated_at=t)
     db.add(r)
     log(db, u, "Uploaded a paper record", iid)
+    db.flush()
+    a = try_auto(db, u, r)
     db.commit()
-    return {"import": out(r)}
+    return {"import": out(r), "autoImported": bool(a), "applicationId": a.id if a else None}
+
+
+class RuleIn(In):
+    auto: bool
+    min_confidence: float = 0.85
+
+
+@router.put("/rule")
+def set_rule(d: RuleIn, db: Session = Depends(get_db), u: User = Depends(need_user)):
+    if not (can(u, "roles.manage") or can(u, "settings.manage")):
+        err(403, "Only an administrator can change how paper records are imported.")
+    if not 0.5 <= d.min_confidence <= 0.99:
+        err(422, "Confidence must be between 50% and 99%.")
+    row = db.get(Setting, "import_rule") or Setting(key="import_rule", value={})
+    row.value = {"auto": d.auto, "minConfidence": d.min_confidence}
+    db.merge(row)
+    log(db, u, f"Automatic paper import {'on' if d.auto else 'off'} (min {round(d.min_confidence * 100)}%)", "settings")
+    db.commit()
+    return auto_rule(db)
+
+
+@router.get("/rule")
+def get_rule(db: Session = Depends(get_db), u: User = Depends(staff_user)):
+    return auto_rule(db)
 
 
 @router.get("/{iid}")
@@ -261,11 +316,8 @@ def reject(iid: str, d: NoteIn, db: Session = Depends(get_db), u: User = Depends
 OFFICIAL_ROLES = [("chair", "chairperson-president"), ("secretary", "secretary-general-secretary"), ("treasurer", "treasurer-finance-officer")]
 
 
-@router.post("/{iid}/import")
-def import_record(iid: str, db: Session = Depends(get_db), u: User = Depends(staff_user)):
-    r = get_import(db, u, iid)
-    if r.status != "Pending":
-        err(409, "This paper record is already closed.")
+def do_import(db: Session, u: User, r: LegacyImport, how: str = "") -> Application:
+    """Create the registration from a paper record. Raises the same errors as a web registration would."""
     f, _warnings, ids = clean(r.doc_type, r.fields or {})
     place = place_or_422(PlaceIn(county_id=ids["countyId"], sub_id=ids["subId"], ward_id=ids["wardId"]))
     if u.role == "county_officer" and place["county_id"] != u.county_id:
@@ -290,8 +342,19 @@ def import_record(iid: str, db: Session = Depends(get_db), u: User = Depends(sta
     a = new_app(db, d, SimpleNamespace(id=None), place, f"Paper record, entered by {u.name}")
     a.legacy, a.legacy_cert_no = True, f.get("certificate_number", "")[:60]
     a.pay_status, a.pay_amount, a.pay_method, a.pay_at, a.receipt = "Paid", 0, "Legacy record (fee waived)", now(), "LEGACY"
-    a.history = [*a.history, hist(u, "Imported from a paper record", f"Scan {r.file_name}" + (f", old certificate {a.legacy_cert_no}" if a.legacy_cert_no else ""))]
+    a.history = [*a.history, hist(u, "Imported from a paper record" + (f" ({how})" if how else ""),
+                                  f"Scan {r.file_name}" + (f", old certificate {a.legacy_cert_no}" if a.legacy_cert_no else ""))]
     r.status, r.application_id, r.updated_at = "Imported", a.id, now()
-    log(db, u, "Imported a paper record", a.id)
+    r.note = how
+    log(db, u, "Imported a paper record" + (f" ({how})" if how else ""), a.id)
+    return a
+
+
+@router.post("/{iid}/import")
+def import_record(iid: str, db: Session = Depends(get_db), u: User = Depends(staff_user)):
+    r = get_import(db, u, iid)
+    if r.status != "Pending":
+        err(409, "This paper record is already closed.")
+    a = do_import(db, u, r)
     db.commit()
     return {"import": out(r), "applicationId": a.id}
