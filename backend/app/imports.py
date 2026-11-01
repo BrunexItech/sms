@@ -182,6 +182,11 @@ def out(r: LegacyImport) -> dict:
 
 
 # ───────────── routes ─────────────
+@router.get("/reader/status")
+def reader_status(u: User = Depends(staff_user)):
+    return ocr_client.status()
+
+
 @router.get("")
 def list_imports(status: str = "", db: Session = Depends(get_db), u: User = Depends(staff_user)):
     rows = db.scalars(select(LegacyImport).order_by(LegacyImport.created_at.desc()).limit(300)).all()

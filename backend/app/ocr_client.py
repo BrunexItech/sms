@@ -20,6 +20,20 @@ def zones_for(doc_type: str) -> list[dict]:
         return []
 
 
+def status() -> dict:
+    """Is the reader reachable with our key? Never reveals the key."""
+    if not C.OCR_API_KEY:
+        return {"configured": False, "ok": False, "message": "No reader key is set on the server. Forms are keyed by hand."}
+    try:
+        r = requests.get(f"{C.OCR_URL}/api/documents/zones-health", headers={"X-API-Key": C.OCR_API_KEY}, timeout=8)
+    except requests.RequestException:
+        return {"configured": True, "ok": False, "message": "The reader could not be reached. Forms can still be keyed by hand."}
+    if r.status_code in (401, 403):
+        return {"configured": True, "ok": False, "message": "The reader rejected the key. Ask for a new one."}
+    ok = r.status_code == 200
+    return {"configured": True, "ok": ok, "message": "Reader connected." if ok else f"The reader answered with an error ({r.status_code})."}
+
+
 def prefill(doc_type: str, image: bytes, file_name: str, mime: str) -> dict:
     """Suggestions per field: {"available": bool, "fields": {key: {value, confidence, script, bbox}}, "message": str}."""
     zones = zones_for(doc_type)

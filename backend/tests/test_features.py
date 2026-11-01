@@ -560,3 +560,24 @@ def test_paper_record_import_player_and_club(client_factory, staff):
     assert reg.post(f"/api/imports/{club['id']}/import").status_code == 422
     reg.put(f"/api/imports/{club['id']}", json={"fields": {**base, "treasurer_name": "Samuel Kiprop"}})
     assert reg.post(f"/api/imports/{club['id']}/import").status_code == 200
+
+
+def test_reader_status_never_exposes_the_key(staff, monkeypatch):
+    from app import ocr_client, settings as S
+    nbo = staff("nairobi.sports@sports.example.ke")
+    assert nbo.get("/api/imports/reader/status").json()["configured"] is False
+    monkeypatch.setattr(S, "OCR_API_KEY", "oqk_secret_value")
+
+    class R:
+        status_code = 200
+    seen = {}
+
+    def fake_get(url, headers=None, timeout=0):
+        seen["h"] = headers
+        return R()
+
+    monkeypatch.setattr(ocr_client.requests, "get", fake_get)
+    res = nbo.get("/api/imports/reader/status")
+    assert res.json()["ok"] is True and "oqk_secret_value" not in res.text and seen["h"]["X-API-Key"] == "oqk_secret_value"
+    R.status_code = 401
+    assert nbo.get("/api/imports/reader/status").json()["ok"] is False

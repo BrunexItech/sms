@@ -43,6 +43,12 @@ export default function Page() {
   const [zoom, setZoom] = useState(1);
   const [turn, setTurn] = useState(0);
   const [filter, setFilter] = useState<"Pending" | "Imported" | "Rejected">("Pending");
+  const [reader, setReader] = useState<{ configured: boolean; ok: boolean; message: string } | null>(null);
+  useEffect(() => {
+    let off = false;
+    api<{ configured: boolean; ok: boolean; message: string }>("/imports/reader/status").then((r) => !off && setReader(r)).catch(() => {});
+    return () => { off = true; };
+  }, []);
 
   const load = useCallback(async () => {
     const r = await api<{ imports: Rec[] }>("/imports");
@@ -164,6 +170,11 @@ export default function Page() {
           <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" onChange={pick} />
         </label>
         <p className="text-xs text-ink-3">JPG, PNG, WebP or PDF up to 12 MB, one form per file. Scans are private and only officers can open them.</p>
+        {reader && (
+          <span title={reader.message} className={`ml-auto inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${reader.ok ? "bg-leaf/15 text-leaf" : "bg-bone text-ink-2"}`}>
+            <span aria-hidden className={`h-2 w-2 rounded-full ${reader.ok ? "bg-leaf" : "bg-ink-3"}`} /> {reader.ok ? "Reader connected" : "Reader off: keying by hand"}
+          </span>
+        )}
       </section>
 
       <div className="mb-3 flex flex-wrap gap-2">
