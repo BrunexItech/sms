@@ -710,3 +710,37 @@ def test_embedded_scanner_token_and_fields(staff, monkeypatch):
     assert r["readerOn"] and r["fields"] == {"name": "PETER OTIENO", "id_no": "12345678", "dob": "01/02/1995"}
     assert r["suggestions"]["name"]["confidence"] == 0.9 and r["suggestions"]["id_no"]["confidence"] == 0.8
     assert r["cleaned"]["dob"] == "1995-02-01"
+
+
+def test_uploaded_image_is_read_by_the_readers_form_type(staff, monkeypatch):
+    from app import ocr_client, settings as S
+    nbo = staff("nairobi.sports@sports.example.ke")
+    monkeypatch.setattr(S, "OCR_API_KEY", "oqk_k")
+    monkeypatch.setattr(S, "OCR_TYPE_PLAYER", "type-player")
+    ocr_client._TOKEN.update({"v": None, "exp": 0.0})
+    calls = []
+
+    class Rsp:
+        status_code = 200
+        def __init__(self, body): self.body = body
+        def raise_for_status(self): pass
+        def json(self): return self.body
+
+    def fake_post(url, headers=None, files=None, data=None, timeout=0):
+        calls.append((url, dict(headers or {}), dict(data or {})))
+        if url.endswith("/api/embed/token"):
+            return Rsp({"token": "tok-1", "expires_in": 900})
+        return Rsp({"fields": [{"key": "full_name", "value": "John Kamau Mwangi", "confidence": 0.8754, "bbox": None},
+                               {"key": "id_number", "value": "12345678", "confidence": 0.8754, "bbox": None},
+                               {"key": "phone", "value": "", "confidence": 0.0, "bbox": None}]})
+    monkeypatch.setattr(ocr_client.requests, "post", fake_post)
+    r = nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("p.png", PNG, "image/png")}).json()["import"]
+    assert r["readerOn"] and r["fields"] == {"name": "John Kamau Mwangi", "id_no": "12345678"}  # blank phone stays blank
+    extract = next(c for c in calls if c[0].endswith("/api/embed/extract"))
+    assert extract[1] == {"X-Embed-Token": "tok-1"} and extract[2] == {"kind": "document", "type_id": "type-player"}
+    # the token is reused for the next upload within its lifetime
+    nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("q.png", PNG, "image/png")})
+    assert sum(1 for c in calls if c[0].endswith("/api/embed/token")) == 1
+    # a PDF is not sent to the reader: the officer is told why
+    pdf = nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("f.pdf", b"%PDF-1.4\n" + b"0" * 40, "application/pdf")}).json()["import"]
+    assert pdf["readerOn"] is False and "image" in pdf["reader"]

@@ -4,6 +4,7 @@ It only ever *suggests* values. Every field is checked by an officer before anyt
 and any failure here simply means the officer types the form in by hand.
 """
 import json
+import time
 from pathlib import Path
 
 import requests
@@ -59,17 +60,45 @@ def map_scanner_fields(raw) -> dict:
     return out
 
 
-def embed_token() -> str | None:
-    """Short-lived token for the reader's embeddable scanner, or None when it is not available."""
+_TOKEN: dict = {"v": None, "exp": 0.0}
+
+
+def embed_token(fresh: bool = False) -> str | None:
+    """Short-lived token (15 minutes, reusable for many scans) for the reader's embedded scanner and extraction."""
     if not C.OCR_API_KEY:
         return None
+    if not fresh and _TOKEN["v"] and time.time() < _TOKEN["exp"]:
+        return _TOKEN["v"]
     try:
         r = requests.post(f"{C.OCR_URL}/api/embed/token", headers={"X-API-Key": C.OCR_API_KEY}, timeout=15)
         r.raise_for_status()
         j = r.json()
     except (requests.RequestException, ValueError):
         return None
-    return j.get("token") or j.get("access_token")
+    tok = j.get("token") or j.get("access_token")
+    _TOKEN["v"], _TOKEN["exp"] = tok, time.time() + min(float(j.get("expires_in") or 900), 900) - 60
+    return tok
+
+
+def read_by_type(doc_type: str, image: bytes, file_name: str, mime: str, type_id: str) -> dict:
+    """The reader's schema extraction: it knows our form's fields (type_id) and returns key, value, confidence for each."""
+    def call(token: str):
+        return requests.post(f"{C.OCR_URL}/api/embed/extract", headers={"X-Embed-Token": token},
+                             files={"file": (file_name, image, mime)}, data={"kind": "document", "type_id": type_id}, timeout=120)
+    try:
+        tok = embed_token()
+        if not tok:
+            return {"available": False, "fields": {}, "message": "The reader did not give a scanning token. Enter the fields by hand."}
+        r = call(tok)
+        if r.status_code in (401, 403):  # token expired early: ask for a new one once
+            tok = embed_token(fresh=True)
+            r = call(tok) if tok else r
+        r.raise_for_status()
+        fields = map_scanner_fields(r.json().get("fields", []))
+    except (requests.RequestException, ValueError) as e:
+        return {"available": False, "fields": {}, "message": f"The reader could not read this page ({type(e).__name__}). Enter the fields by hand."}
+    return {"available": bool(fields), "fields": fields,
+            "message": "" if fields else "The reader found no labelled fields on this scan. Enter them by hand."}
 
 
 def status() -> dict:
@@ -108,7 +137,10 @@ def prefill(doc_type: str, image: bytes, file_name: str, mime: str) -> dict:
     if not C.OCR_API_KEY:
         return {"available": False, "fields": {}, "message": "The reader is not connected. Enter the fields by hand."}
     if not mime.startswith("image/"):
-        return {"available": False, "fields": {}, "message": "Automatic reading works on images. Enter the fields from this PDF by hand."}
+        return {"available": False, "fields": {}, "message": "Automatic reading works on images (JPG, PNG, WebP). Photograph or save the page as an image, or enter the fields by hand."}
+    type_id = C.OCR_TYPE_PLAYER if doc_type == "player" else C.OCR_TYPE_CLUB
+    if type_id and not zones:
+        return read_by_type(doc_type, image, file_name, mime, type_id)
     if not zones:
         return read_by_labels(doc_type, image, file_name, mime)
     try:
