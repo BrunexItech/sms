@@ -744,3 +744,33 @@ def test_uploaded_image_is_read_by_the_readers_form_type(staff, monkeypatch):
     # a PDF is not sent to the reader: the officer is told why
     pdf = nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("f.pdf", b"%PDF-1.4\n" + b"0" * 40, "application/pdf")}).json()["import"]
     assert pdf["readerOn"] is False and "image" in pdf["reader"]
+
+
+def test_scans_can_be_deleted_and_expire(staff, client_factory):
+    from datetime import datetime, timedelta, timezone
+    from pathlib import Path
+    from app.db import SessionLocal
+    from app.imports import purge_scans
+    from app.models import LegacyImport
+    nbo, admin = staff("nairobi.sports@sports.example.ke"), staff("super.admin@sports.example.ke")
+    rec = _scan(nbo)
+    path = Path(next(r for r in [SessionLocal().get(LegacyImport, rec["id"])]).path)
+    assert path.exists() and nbo.get(f"/api/imports/{rec['id']}/image").status_code == 200
+    assert client_factory().delete(f"/api/imports/{rec['id']}/scan").status_code == 401
+    gone = nbo.delete(f"/api/imports/{rec['id']}/scan")
+    assert gone.status_code == 200 and gone.json()["import"]["scanDeleted"] is True and not path.exists()
+    assert nbo.get(f"/api/imports/{rec['id']}/image").status_code == 410
+    assert nbo.delete(f"/api/imports/{rec['id']}/scan").status_code == 409
+
+    # an old closed record loses its scan in the daily sweep; a pending one never does
+    old, fresh, pending = _scan(nbo), _scan(nbo), _scan(nbo)
+    nbo.post(f"/api/imports/{old['id']}/reject", json={"note": "x"})
+    nbo.post(f"/api/imports/{fresh['id']}/reject", json={"note": "x"})
+    with SessionLocal() as db:
+        db.get(LegacyImport, old["id"]).updated_at = (datetime.now(timezone.utc) - timedelta(days=40)).isoformat(timespec="seconds")
+        db.get(LegacyImport, pending["id"]).updated_at = (datetime.now(timezone.utc) - timedelta(days=400)).isoformat(timespec="seconds")
+        db.commit()
+        assert purge_scans(db) >= 1
+        assert db.get(LegacyImport, old["id"]).path == "" and db.get(LegacyImport, fresh["id"]).path and db.get(LegacyImport, pending["id"]).path
+    assert admin.put("/api/imports/rule", json={"auto": False, "minConfidence": 0.85, "retentionDays": 7}).json()["retentionDays"] == 7
+    assert admin.put("/api/imports/rule", json={"auto": False, "minConfidence": 0.85, "retentionDays": 30}).status_code == 200

@@ -6,7 +6,8 @@ Nothing in the holding table is a registration. Importing goes through the same 
 import difflib
 import json
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
@@ -35,7 +36,34 @@ REQUIRED = {"player": ["name", "id_no", "dob", "gender", "sport", "county", "sub
 
 def auto_rule(db: Session) -> dict:
     row = db.get(Setting, "import_rule")
-    return {"auto": False, "minConfidence": 0.85, **(row.value if row else {})}
+    # retentionDays: scans of imported or set-aside records are deleted this many days later (0 keeps them)
+    return {"auto": False, "minConfidence": 0.85, "retentionDays": 30, **(row.value if row else {})}
+
+
+def erase_scan(r: LegacyImport) -> bool:
+    """Delete the image file and mark the record. The extracted values stay only where an officer imported them."""
+    gone = False
+    if r.path:
+        try:
+            Path(r.path).unlink(missing_ok=True)
+            gone = True
+        except OSError:
+            return False
+    r.path, r.scan_deleted_at, r.updated_at = "", now(), now()
+    return gone or True
+
+
+def purge_scans(db: Session) -> int:
+    """Daily clean-up: remove scans of closed records older than the retention period."""
+    days = int(auto_rule(db)["retentionDays"])
+    if days <= 0:
+        return 0
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat(timespec="seconds")
+    rows = db.scalars(select(LegacyImport).where(LegacyImport.status != "Pending", LegacyImport.path != "", LegacyImport.updated_at < cutoff)).all()
+    for r in rows:
+        erase_scan(r)
+    db.commit()
+    return len(rows)
 
 
 def try_auto(db: Session, u: User, r: LegacyImport) -> Application | None:
@@ -209,6 +237,7 @@ def out(r: LegacyImport) -> dict:
     return {"id": r.id, "docType": r.doc_type, "status": r.status, "fileName": r.file_name, "mime": r.mime, "size": r.size,
             "fields": r.fields or {}, "cleaned": fields, "warnings": warnings, "place": place,
             "suggestions": (r.ocr or {}).get("fields", {}), "reader": (r.ocr or {}).get("message", ""), "readerOn": bool((r.ocr or {}).get("available")),
+            "scanDeleted": bool(r.scan_deleted_at), "scanDeletedAt": r.scan_deleted_at,
             "applicationId": r.application_id, "note": r.note, "createdAt": r.created_at, "updatedAt": r.updated_at}
 
 
@@ -281,6 +310,7 @@ async def upload(doc_type: str = Form(...), file: UploadFile = File(...), scanne
 class RuleIn(In):
     auto: bool
     min_confidence: float = 0.85
+    retention_days: int = 30
 
 
 @router.put("/rule")
@@ -290,9 +320,11 @@ def set_rule(d: RuleIn, db: Session = Depends(get_db), u: User = Depends(need_us
     if not 0.5 <= d.min_confidence <= 0.99:
         err(422, "Confidence must be between 50% and 99%.")
     row = db.get(Setting, "import_rule") or Setting(key="import_rule", value={})
-    row.value = {"auto": d.auto, "minConfidence": d.min_confidence}
+    if not 0 <= d.retention_days <= 365:
+        err(422, "Keep scans for 0 (forever) to 365 days.")
+    row.value = {"auto": d.auto, "minConfidence": d.min_confidence, "retentionDays": d.retention_days}
     db.merge(row)
-    log(db, u, f"Automatic paper import {'on' if d.auto else 'off'} (min {round(d.min_confidence * 100)}%)", "settings")
+    log(db, u, f"Paper import: automatic {'on' if d.auto else 'off'}, min {round(d.min_confidence * 100)}%, scans kept {d.retention_days} days", "settings")
     db.commit()
     return auto_rule(db)
 
@@ -307,9 +339,26 @@ def one(iid: str, db: Session = Depends(get_db), u: User = Depends(staff_user)):
     return {"import": out(get_import(db, u, iid))}
 
 
+@router.delete("/{iid}/scan")
+def delete_scan(iid: str, db: Session = Depends(get_db), u: User = Depends(staff_user)):
+    r = get_import(db, u, iid)
+    if not r.path and r.scan_deleted_at:
+        err(409, "The scan is already deleted.")
+    erase_scan(r)
+    if r.application_id:
+        a = db.get(Application, r.application_id)
+        if a:
+            a.history = [*a.history, hist(u, "Scan of the paper record deleted")]
+    log(db, u, "Deleted the scan of a paper record", r.id)
+    db.commit()
+    return {"import": out(r)}
+
+
 @router.get("/{iid}/image")
 def image(iid: str, db: Session = Depends(get_db), u: User = Depends(staff_user)):
     r = get_import(db, u, iid)
+    if not r.path or not Path(r.path).exists():
+        err(410, "The scan was deleted.")
     return FileResponse(r.path, media_type=r.mime, headers={"Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff"})
 
 

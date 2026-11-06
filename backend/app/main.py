@@ -1,3 +1,4 @@
+import asyncio
 import os
 import warnings
 from contextlib import asynccontextmanager
@@ -27,7 +28,21 @@ async def lifespan(_: FastAPI):
         sync_catalogue(db)
         row = db.get(Setting, "role_perms")
         rbac.load_overrides(row.value if row else None)
+    # scans of closed paper records are removed after the retention period (checked at start and every 6 hours)
+    from .imports import purge_scans
+
+    async def sweep():
+        while True:
+            try:
+                with SessionLocal() as db:
+                    purge_scans(db)
+            except Exception:  # never let clean-up stop the app
+                pass
+            await asyncio.sleep(6 * 3600)
+
+    task = asyncio.create_task(sweep())
     yield
+    task.cancel()
 
 
 app = FastAPI(title="National Sports Management Platform API", version="1.0", lifespan=lifespan,

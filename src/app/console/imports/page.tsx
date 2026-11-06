@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Camera, Check, FileScan, ScanLine, RotateCw, Upload, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Camera, Check, FileScan, ScanLine, Trash2, RotateCw, Upload, X, ZoomIn, ZoomOut } from "lucide-react";
 import { api, upload } from "@/lib/api";
 import { SPORTS } from "@/data/sports";
 import { errText, useStore } from "@/lib/store";
@@ -16,7 +16,7 @@ interface Suggestion { value: string; confidence: number; script: string }
 interface Rec {
   id: string; docType: "player" | "club"; status: string; fileName: string; mime: string; fields: Record<string, string>;
   cleaned: Record<string, string>; warnings: string[]; suggestions: Record<string, Suggestion>; reader: string; readerOn: boolean;
-  applicationId: string | null; note: string; createdAt: string;
+  applicationId: string | null; note: string; createdAt: string; scanDeleted: boolean; scanDeletedAt: string;
 }
 
 type Spec = { key: string; label: string; kind?: "text" | "select" | "sport" | "level"; options?: string[]; hint?: string; wide?: boolean };
@@ -46,16 +46,39 @@ export default function Page() {
   const [turn, setTurn] = useState(0);
   const [filter, setFilter] = useState<"Pending" | "Imported" | "Rejected">("Pending");
   const [reader, setReader] = useState<{ configured: boolean; ok: boolean; message: string } | null>(null);
-  const [rule, setRule] = useState<{ auto: boolean; minConfidence: number } | null>(null);
+  const [rule, setRule] = useState<{ auto: boolean; minConfidence: number; retentionDays: number } | null>(null);
   useEffect(() => {
     let off = false;
-    api<{ auto: boolean; minConfidence: number }>("/imports/rule").then((r) => !off && setRule(r)).catch(() => {});
+    api<{ auto: boolean; minConfidence: number; retentionDays: number }>("/imports/rule").then((r) => !off && setRule(r)).catch(() => {});
     return () => { off = true; };
   }, []);
+  const setRetention = async (days: number) => {
+    if (!rule) return;
+    try {
+      const r = await api<{ auto: boolean; minConfidence: number; retentionDays: number }>("/imports/rule", "PUT", { auto: rule.auto, minConfidence: rule.minConfidence, retentionDays: days });
+      setRule(r);
+      notify(r.retentionDays ? `Scans of finished records are deleted ${r.retentionDays} days later.` : "Scans of finished records are kept until someone deletes them.", "ok", "Scan retention changed");
+    } catch (x) {
+      notify(errText(x), "error", "Could not change retention");
+    }
+  };
+  const deleteScan = async () => {
+    if (!rec || !confirm("Delete this scan from the server? The information you approved stays in the registry, but the image cannot be recovered.")) return;
+    setBusy("delete");
+    try {
+      await api(`/imports/${rec.id}/scan`, "DELETE");
+      await load();
+      notify("The image was removed from the server.", "ok", "Scan deleted");
+    } catch (x) {
+      notify(errText(x), "error", "Could not delete the scan");
+    } finally {
+      setBusy("");
+    }
+  };
   const toggleRule = async () => {
     if (!rule) return;
     try {
-      const r = await api<{ auto: boolean; minConfidence: number }>("/imports/rule", "PUT", { auto: !rule.auto, minConfidence: rule.minConfidence });
+      const r = await api<{ auto: boolean; minConfidence: number; retentionDays: number }>("/imports/rule", "PUT", { auto: !rule.auto, minConfidence: rule.minConfidence, retentionDays: rule.retentionDays });
       setRule(r);
       notify(r.auto ? "Clear scans will be registered without a check." : "Every scan will now wait for an officer to approve it.", "ok", "Import rule changed");
     } catch (x) {
@@ -212,6 +235,14 @@ export default function Page() {
             Skip the check for clear scans: {rule.auto ? `on (${Math.round(rule.minConfidence * 100)}%+)` : "off"}
           </button>
         )}
+        {rule && (
+          <label className="inline-flex items-center gap-2 text-xs font-semibold text-ink-2">
+            Delete scans after
+            <select className="rounded-md border border-line bg-white px-2 py-1.5 text-xs font-bold" value={rule.retentionDays} disabled={!can("settings.manage")} onChange={(e) => setRetention(Number(e.target.value))} aria-label="Scan retention">
+              <option value={7}>7 days</option><option value={14}>14 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={0}>never</option>
+            </select>
+          </label>
+        )}
         {reader && (
           <span title={reader.message} className={`ml-auto inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${reader.ok ? "bg-leaf/15 text-leaf" : "bg-bone text-ink-2"}`}>
             <span aria-hidden className={`h-2 w-2 rounded-full ${reader.ok ? "bg-leaf" : "bg-ink-3"}`} /> {reader.ok ? "Reader connected" : "Reader off: keying by hand"}
@@ -247,7 +278,12 @@ export default function Page() {
               <section className="min-w-0 rounded-2xl border border-line bg-white p-3 lg:sticky lg:top-24">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="truncate text-sm font-bold">{rec.fileName}</p>
-                  {rec.mime.startsWith("image/") && (
+                  {!rec.scanDeleted && (
+                    <div className="flex gap-1.5">
+                      <button onClick={deleteScan} disabled={busy === "delete"} aria-label="Delete scan" title="Delete this scan from the server" className="grid h-8 w-8 place-items-center rounded-lg border border-line text-kenya-red hover:bg-red-50 disabled:opacity-60"><Trash2 size={15} /></button>
+                    </div>
+                  )}
+                  {rec.mime.startsWith("image/") && !rec.scanDeleted && (
                     <div className="flex gap-1.5">
                       <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} aria-label="Zoom out" className="grid h-8 w-8 place-items-center rounded-lg border border-line hover:bg-bone"><ZoomOut size={15} /></button>
                       <button onClick={() => setZoom((z) => Math.min(3, z + 0.25))} aria-label="Zoom in" className="grid h-8 w-8 place-items-center rounded-lg border border-line hover:bg-bone"><ZoomIn size={15} /></button>
@@ -256,7 +292,9 @@ export default function Page() {
                   )}
                 </div>
                 <div className="max-h-[72vh] overflow-auto rounded-xl bg-bone">
-                  {rec.mime === "application/pdf" ? (
+                  {rec.scanDeleted ? (
+                    <p className="grid min-h-[260px] place-items-center p-6 text-center text-sm font-semibold text-ink-3">This scan was deleted{rec.scanDeletedAt ? ` on ${new Date(rec.scanDeletedAt).toLocaleDateString("en-KE")}` : ""}. The registration keeps the approved information.</p>
+                  ) : rec.mime === "application/pdf" ? (
                     <iframe title="Scanned form" src={`/api/imports/${rec.id}/image`} className="h-[70vh] w-full" />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element

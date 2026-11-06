@@ -119,6 +119,7 @@ class LegacyImport(Base):
     fields: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # the officer's working values
     ocr: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # what the reader suggested, with confidence
     application_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    scan_deleted_at: Mapped[str] = mapped_column(String, default="")  # the image is gone from the server; the record stays
     note: Mapped[str] = mapped_column(String, default="")
     created_by: Mapped[str] = mapped_column(String, default="")
     created_at: Mapped[str] = mapped_column(String, default="")
