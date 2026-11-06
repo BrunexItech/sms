@@ -25,6 +25,51 @@ const STATUS_ACCENT: Record<string, string> = {
   "Needs info": "border-t-gold",
 };
 
+/** A person whose registration staff entered from paper links it to this account. */
+function ClaimCard() {
+  const { refresh, notify } = useStore();
+  const [f, setF] = useState({ idNo: "", dob: "", phone: "" });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [open, setOpen] = useState(false);
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setErr("");
+    try {
+      await api("/claim-record", "POST", f);
+      await refresh();
+      setF({ idNo: "", dob: "", phone: "" });
+      setOpen(false);
+      notify("Your paper registration is now part of this account. You can track it and download its certificate here.", "ok", "Record linked");
+    } catch (x) {
+      setErr(errText(x));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="rounded-2xl border border-line bg-white p-5" aria-label="Claim a paper record">
+      <h2 className="text-lg font-bold text-forest-900">Registered on paper?</h2>
+      <p className="mt-1 text-sm text-ink-3">If the Ministry captured your registration from a paper form, link it to this account.</p>
+      {!open ? (
+        <button onClick={() => setOpen(true)} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-forest-800 px-4 py-2.5 text-sm font-bold text-white hover:bg-forest-900">Link my record</button>
+      ) : (
+        <form onSubmit={submit} className="step-anim mt-3 space-y-3">
+          <Field label="ID or passport number"><input className={inputCls} value={f.idNo} onChange={(e) => { setF({ ...f, idNo: e.target.value }); setErr(""); }} autoComplete="off" /></Field>
+          <Field label="Date of birth" hint="For players. e.g. 15/04/1990"><input className={inputCls} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} autoComplete="off" /></Field>
+          <Field label="Phone number on the paper form"><input className={inputCls} inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} autoComplete="off" /></Field>
+          {err && <p role="alert" className="text-xs font-semibold text-kenya-red">{err}</p>}
+          <div className="flex gap-2">
+            <button disabled={busy} className="inline-flex items-center gap-2 rounded-lg bg-leaf px-4 py-2.5 text-sm font-bold text-white disabled:opacity-70">{busy ? <ButtonSpinner /> : null} Link record</button>
+            <button type="button" onClick={() => setOpen(false)} className="rounded-lg border border-line px-4 py-2.5 text-sm font-bold text-ink-2 hover:bg-bone">Cancel</button>
+          </div>
+        </form>
+      )}
+    </section>
+  );
+}
+
 function Tile({ icon, label, value, hint, tone = "forest" }: { icon: React.ReactNode; label: string; value: React.ReactNode; hint?: string; tone?: "forest" | "leaf" | "gold" | "red" }) {
   const tones = { forest: "bg-forest-100 text-forest-800", leaf: "bg-leaf/15 text-leaf", gold: "bg-gold-soft text-forest-900", red: "bg-red-50 text-kenya-red" };
   return (
@@ -108,6 +153,7 @@ export function AccountView() {
 
         <aside className="space-y-6 print:hidden xl:sticky xl:top-28">
           <NotificationList />
+          <ClaimCard />
           <section className="rounded-2xl border border-line bg-white p-5" aria-label="Quick links">
             <h2 className="text-base font-bold text-forest-900">Quick links</h2>
             <ul className="mt-3 grid gap-1.5">

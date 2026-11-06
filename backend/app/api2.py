@@ -414,6 +414,27 @@ def set_payment_rule(d: PaymentRuleIn, db: Session = Depends(get_db), u: User = 
     return {"required": payment_required(db)}
 
 
+# ───────────── email check (control centre) ─────────────
+@router.get("/control/email")
+def email_status(u: User = Depends(need_user)):
+    if not (can(u, "roles.manage") or can(u, "settings.manage")):
+        err(403, "Only an administrator can see the email settings.")
+    return {"configured": bool(C.SMTP_HOST), "from": C.SMTP_FROM if C.SMTP_HOST else "", "host": C.SMTP_HOST}
+
+
+@router.post("/control/email/test")
+def email_test(u: User = Depends(need_user)):
+    from .notify import send_now
+    if not (can(u, "roles.manage") or can(u, "settings.manage")):
+        err(403, "Only an administrator can send a test email.")
+    if not C.SMTP_HOST:
+        err(409, "No mail server is set up yet. Add the SMTP settings on the server first.")
+    problem = send_now(u.email, "Test email · Ministry of Sports", "This is a test message from the National Sports Registry. If you can read it, email is working.")
+    if problem:
+        err(502, f"The test email could not be sent ({problem}).")
+    return {"ok": True, "to": u.email}
+
+
 # ───────────── M-Pesa (Daraja) ─────────────
 class MpesaIn(In):
     application_ids: list[str]

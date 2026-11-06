@@ -27,6 +27,22 @@ def _send(to: str, subject: str, body: str) -> None:
         log.warning("email to %s failed: %s", to, e)
 
 
+def send_now(to: str, subject: str, body: str) -> str | None:
+    """Send immediately and return the error text (or None on success). Used for the administrator's test message."""
+    try:
+        m = EmailMessage()
+        m["From"], m["To"], m["Subject"] = C.SMTP_FROM, to, subject
+        m.set_content(body)
+        with smtplib.SMTP(C.SMTP_HOST, C.SMTP_PORT, timeout=15) as s:
+            s.starttls()
+            if C.SMTP_USER:
+                s.login(C.SMTP_USER, C.SMTP_PASSWORD)
+            s.send_message(m)
+        return None
+    except Exception as e:  # noqa: BLE001
+        return f"{type(e).__name__}: {e}"[:300]
+
+
 def email(to: str, subject: str, body: str) -> None:
     if C.SMTP_HOST and to:
         threading.Thread(target=_send, args=(to, subject, body), daemon=True).start()

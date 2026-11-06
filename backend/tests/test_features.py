@@ -897,3 +897,47 @@ def test_a_pdf_is_split_into_one_paper_record_per_page(staff, monkeypatch):
     assert seen == ["image/png", "image/png"]  # the reader receives images, never the PDF
     img = nbo.get(f"/api/imports/{res['imports'][0]['id']}/image")
     assert img.status_code == 200 and img.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_a_person_can_claim_a_record_imported_from_paper(client_factory, staff, monkeypatch):
+    nbo = staff("nairobi.sports@sports.example.ke")
+    c = next(x for x in R.admin()["counties"] if x["n"] == "Nairobi")
+    s = c["s"][0]
+    fields = {"name": "Claim Me Please", "id_no": "67890123", "dob": "02/02/1996", "gender": "Female", "sport": "volleyball", "level": "Amateur",
+              "phone": "0711 222 333", "county": "Nairobi", "sub_county": s["n"], "ward": s["w"][0]["n"]}
+    rec = _scan(nbo)
+    nbo.put(f"/api/imports/{rec['id']}", json={"fields": fields})
+    aid = nbo.post(f"/api/imports/{rec['id']}/import").json()["applicationId"]
+
+    me = client_factory()
+    make(me)                                  # an ordinary applicant with an account
+    assert client_factory().post("/api/claim-record", json={"idNo": "67890123"}).status_code == 401
+    bad = me.post("/api/claim-record", json={"idNo": "67890123", "dob": "03/03/1996", "phone": "0711222333"})
+    assert bad.status_code == 404 and "could not match" in bad.json()["detail"]   # wrong date of birth: says nothing about which part
+    assert me.post("/api/claim-record", json={"idNo": "67890123", "dob": "02/02/1996", "phone": "0700000000"}).status_code == 404
+    assert me.post("/api/claim-record", json={"idNo": "67890123", "dob": "02/02/1996"}).status_code == 422
+    ok = me.post("/api/claim-record", json={"idNo": "67890123", "dob": "02/02/1996", "phone": "0711 222 333"})
+    assert ok.status_code == 200 and ok.json()["application"]["id"] == aid and ok.json()["application"]["idNo"] == "67890123"
+    mine = [a["id"] for a in me.get("/api/bootstrap?facilities=0").json()["applications"]]
+    assert aid in mine
+    # once claimed, nobody else can claim it
+    other = client_factory(); make(other)
+    assert other.post("/api/claim-record", json={"idNo": "67890123", "dob": "02/02/1996", "phone": "0711222333"}).status_code == 404
+    assert staff("registrar@sports.example.ke").post("/api/claim-record", json={"idNo": "1", "phone": "1"}).status_code == 403
+
+
+def test_email_status_and_test_message(staff, monkeypatch):
+    from app import notify, settings as S
+    admin, nbo = staff("super.admin@sports.example.ke"), staff("nairobi.sports@sports.example.ke")
+    assert nbo.get("/api/control/email").status_code == 403
+    assert admin.get("/api/control/email").json()["configured"] is False
+    assert admin.post("/api/control/email/test").status_code == 409
+    monkeypatch.setattr(S, "SMTP_HOST", "smtp.example.com")
+    monkeypatch.setattr(S, "SMTP_FROM", "no-reply@example.ke")
+    sent = {}
+    monkeypatch.setattr(notify, "send_now", lambda to, subj, body: sent.update(to=to) or None)
+    assert admin.get("/api/control/email").json()["configured"] is True
+    assert admin.post("/api/control/email/test").json()["ok"] is True and sent["to"] == "super.admin@sports.example.ke"
+    monkeypatch.setattr(notify, "send_now", lambda *a: "SMTPAuthenticationError: bad password")
+    r = admin.post("/api/control/email/test")
+    assert r.status_code == 502 and "bad password" in r.json()["detail"]

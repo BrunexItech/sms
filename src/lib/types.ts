@@ -133,6 +133,9 @@ export interface Application {
   /** Registrar of Societies / company / Sports Registrar certificate number (organisations). */
   orgRegNo?: string;
   /** County branches: the national federation they belong to. */
+  /** Imported by staff from a paper record. */
+  legacy?: boolean;
+  legacyCertNo?: string;
   parentId?: string | null;
   /** Head-office town or street (national bodies). */
   address?: string;

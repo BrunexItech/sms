@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from . import ocr_client
 from . import refdata as R
 from . import settings as C
-from .api import MEDIA_DIR, In, PlaceIn, RegisterIn, err, hist, log, need_user, new_app, now, place_or_422, sniff
+from .api import MEDIA_DIR, In, PlaceIn, RegisterIn, app_out, err, hist, log, need_user, new_app, now, place_or_422, sniff
 from .db import get_db
 from .models import Application, LegacyImport, Setting, User
 from .rbac import STAFF_ROLES, can
@@ -318,6 +318,40 @@ def pdf_pages(data: bytes) -> list[bytes]:
         return out
     except Exception:  # a damaged or protected PDF is stored as it is and keyed by hand
         return []
+
+
+# ───────────── a person claims their paper record ─────────────
+class ClaimIn(In):
+    id_no: str
+    dob: str = ""
+    phone: str = ""
+
+
+claim_router = APIRouter(prefix="/api")
+
+
+@claim_router.post("/claim-record")
+def claim_record(d: ClaimIn, db: Session = Depends(get_db), u: User = Depends(need_user)):
+    """A signed-in applicant links a record that staff imported from paper to their own account.
+    The ID number and the phone number on the paper record must both match, and a player's date of birth too."""
+    from . import security as S
+    if u.role != "member":
+        err(403, "Staff accounts cannot claim records.")
+    if S.too_many_attempts(f"claim:{u.id}", limit=6, window=3600):
+        err(429, "Too many attempts. Try again in an hour, or ask your county sports office.")
+    idn, phone, dob = norm_id(fix_digits(d.id_no)), norm_phone(d.phone), norm_date(d.dob)
+    nothing = "We could not match those details to a paper record. Check them, or ask your county sports office."
+    if not idn or not phone:
+        err(422, "Enter your ID number and the phone number given on the paper form.")
+    rows = db.scalars(select(Application).where(Application.legacy.is_(True), Application.owner_id.is_(None), Application.id_no == idn)).all()
+    hit = next((a for a in rows if norm_phone(a.phone) == phone and (a.type != "Player / Sportsperson" or (dob and a.dob == dob))), None)
+    if not hit:
+        err(404, nothing)
+    hit.owner_id = u.id
+    hit.history = [*hit.history, hist(u, "Record claimed by its owner", f"Linked to the account {u.email}")]
+    log(db, u, "Claimed a paper record", hit.id)
+    db.commit()
+    return {"application": app_out(hit, u, owner_view=True)}
 
 
 # ───────────── routes ─────────────

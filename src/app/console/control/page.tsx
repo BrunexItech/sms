@@ -341,6 +341,41 @@ function EditUser({ u, ov, self, canRights, isSuper, onDone }: { u: StaffUser; o
 }
 
 /* ───────── role rights ───────── */
+function EmailCard({ canEdit }: { canEdit: boolean }) {
+  const { notify } = useStore();
+  const [st, setSt] = useState<{ configured: boolean; from: string; host: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let off = false;
+    if (canEdit) api<{ configured: boolean; from: string; host: string }>("/control/email").then((r) => !off && setSt(r)).catch(() => {});
+    return () => { off = true; };
+  }, [canEdit]);
+  const test = async () => {
+    setBusy(true);
+    try {
+      const r = await api<{ to: string }>("/control/email/test", "POST");
+      notify(`A test message was sent to ${r.to}. Check that inbox.`, "ok", "Test email sent");
+    } catch (e) {
+      notify(errText(e), "error", "Email not working");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title="Email" className="lg:col-span-2">
+      <p className="mb-3 text-sm text-ink-2">
+        {st?.configured ? `Emails (password resets, approvals, notices) are sent from ${st.from} through ${st.host}.` : "No mail server is set up, so password-reset and notice emails are not sent. Notices still appear inside the platform. Add the SMTP settings on the server to switch email on."}
+      </p>
+      <fieldset disabled={!canEdit || busy} className="flex flex-wrap items-center gap-3">
+        <span className={`rounded-full px-3 py-1 text-sm font-bold ${st?.configured ? "bg-leaf/15 text-leaf" : "bg-gold-soft text-forest-900"}`}>{st?.configured ? "Email configured" : "Email not set up"}</span>
+        {st?.configured && (
+          <button type="button" onClick={test} className="inline-flex items-center gap-2 rounded-lg bg-forest-800 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40">{busy ? <ButtonSpinner /> : <Check size={15} />} Send a test email to me</button>
+        )}
+      </fieldset>
+    </Card>
+  );
+}
+
 function PaymentRuleCard({ canEdit }: { canEdit: boolean }) {
   const { state, refresh, notify } = useStore();
   const required = state.config.required;
@@ -434,6 +469,7 @@ function Roles({ ov, canRights, reload }: { ov: Overview; canRights: boolean; re
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       <PaymentRuleCard canEdit={canRights} />
+      <EmailCard canEdit={canRights} />
       <EvidenceCard canEdit={canRights} />
       {ov.roles.map((r) => {
         const cur = draft[r.id] ?? r.perms;

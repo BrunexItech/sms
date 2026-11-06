@@ -205,6 +205,7 @@ function Detail({ app }: { app: Application }) {
         {app.orgRegNo && <Row k="Registration no." v={app.orgRegNo} />}
         <Row k="Sport" v={app.sport === "other" && app.sportOther ? `Other: ${app.sportOther}` : SPORT_BY_ID[app.sport]?.name} />
         {app.roleName && <Row k="Role" v={app.roleName} />}
+        {app.legacy && <Row k="Source" v={`Paper record${app.legacyCertNo ? `, old certificate ${app.legacyCertNo}` : ""}`} />}
         <Row k="Federation" v={app.federation} />
         <Row k="Level" v={app.level || undefined} />
         {app.address && <Row k="Head office" v={app.address} />}
