@@ -622,7 +622,7 @@ def test_upload_fills_fields_from_the_readers_text(staff, monkeypatch):
                               {"text": "ID No: 23456789", "confidence": 0.9, "bbox": [60, 150, 300, 30]}]}
     monkeypatch.setattr(ocr_client.requests, "post", lambda *a, **k: R())
     rec = _scan(nbo)
-    assert rec["readerOn"] is True and rec["fields"]["name"] == "JANE ACHIENG OTIENO" and rec["suggestions"]["id_no"]["confidence"] == 0.9
+    assert rec["readerOn"] is True and rec["fields"]["name"] == "Jane Achieng Otieno" and rec["suggestions"]["id_no"]["confidence"] == 0.9
     R.status_code = 404
     assert _scan(nbo)["readerOn"] is False  # text service missing: officer keys by hand, nothing breaks
 
@@ -651,7 +651,7 @@ def test_a_confident_scan_is_registered_without_anyone_typing(staff, monkeypatch
 
     # by default every read waits for an officer to look at the scan and press Approve
     first = nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("z.png", PNG, "image/png")}).json()
-    assert first["autoImported"] is False and first["import"]["status"] == "Pending" and first["import"]["fields"]["name"] == "JANE ACHIENG OTIENO"
+    assert first["autoImported"] is False and first["import"]["status"] == "Pending" and first["import"]["fields"]["name"] == "Jane Achieng Otieno"
     assert nbo.post(f"/api/imports/{first['import']['id']}/reject", json={"note": "test"}).status_code == 200
     # an administrator may let clear scans skip the check
     assert admin.put("/api/imports/rule", json={"auto": True, "minConfidence": 0.85}).status_code == 200
@@ -707,7 +707,7 @@ def test_embedded_scanner_token_and_fields(staff, monkeypatch):
     scanned = _j.dumps([{"key": "full_name", "value": "PETER OTIENO", "confidence": 0.9}, {"key": "id_number", "value": "12345678"},
                         {"key": "date_of_birth", "value": "01/02/1995"}, {"key": "unknown_thing", "value": "x"}])
     r = nbo.post("/api/imports", data={"doc_type": "player", "scanned": scanned}, files={"file": ("s.png", PNG, "image/png")}).json()["import"]
-    assert r["readerOn"] and r["fields"] == {"name": "PETER OTIENO", "id_no": "12345678", "dob": "01/02/1995"}
+    assert r["readerOn"] and r["fields"] == {"name": "Peter Otieno", "id_no": "12345678", "dob": "1995-02-01"}
     assert r["suggestions"]["name"]["confidence"] == 0.9 and r["suggestions"]["id_no"]["confidence"] == 0.8
     assert r["cleaned"]["dob"] == "1995-02-01"
 
@@ -803,3 +803,66 @@ def test_complete_delete_for_testing_frees_the_document_for_another_try(staff, m
     again = _scan(nbo)
     nbo.put(f"/api/imports/{again['id']}", json={"fields": fields})
     assert nbo.post(f"/api/imports/{again['id']}/import").status_code == 200
+
+
+def test_values_misread_by_real_ocr_are_repaired():
+    """Strings taken from a real OCR run over printed forms and phone photos."""
+    from app.imports import clean
+    from app import label_reader as L
+    f, warn, place = clean("club", {"org_reg_no": "S0C/2019/04512", "id_no": "23456789", "phone": "0722111222", "ward": "KayoleNorth",
+                                    "county": "NAIROBI", "sub_county": "Embakasi Central", "kra": "A12345678OZ"})
+    assert f["org_reg_no"] == "SOC/2019/04512" and f["phone"] == "+254722111222" and f["kra"] == "A123456780Z"
+    assert (f["county"], f["sub_county"], f["ward"]) == ("Nairobi", "Embakasi Central", "Kayole North") and place["wardId"]
+    assert clean("player", {"id_no": "3456789l"})[0]["id_no"] == "34567891"  # a lower-case L read for a 1
+    assert clean("player", {"id_no": "A1234567"})[0]["id_no"] == "A1234567"  # a passport keeps its letter
+    assert clean("player", {"id_no": "B1234567"})[0]["id_no"] == "B1234567"
+    # "Contact ID Number" on a club form is the contact person's ID, not unmatched text
+    assert L.read("club", [{"text": "Contact ID Number: 23456789", "confidence": 0.9, "bbox": [0, 0, 300, 30]}])["id_no"]["value"] == "23456789"
+
+
+def test_a_blank_field_never_takes_the_next_label_as_its_value():
+    """From a real OCR run: empty Guardian fields and an empty Certificate Number, followed by Signature and Date lines."""
+    from app import label_reader as L
+    def ln(t, y, x=60, w=420):
+        return {"text": t, "confidence": 0.95, "bbox": [x, y, w, 30]}
+    lines = [ln("Ward: Kayole North", 100), ln("Guardian Name:", 150), ln("Guardian Phone:", 200), ln("Guardian Relationship:", 250),
+             ln("Certificate Number:", 300), ln("Signature: ____________________", 380), ln("Date: ____________", 450)]
+    got = L.read("player", lines)
+    assert got["ward"]["value"] == "Kayole North"
+    for k in ("guardian_name", "guardian_phone", "guardian_relationship", "certificate_number"):
+        assert k not in got, (k, got.get(k))
+    # a value on the line below is still found when the next line is not a label
+    got = L.read("player", [ln("Phone", 100, w=120), ln("0712 345 678", 140, w=240)])
+    assert got["phone"]["value"] == "0712 345 678"
+
+
+def test_label_matching_is_word_bounded_and_values_that_look_like_labels_survive():
+    from app import label_reader as L
+    def ln(t, y): return {"text": t, "confidence": 0.9, "bbox": [60, y, 400, 30]}
+    # "Wardhere" is a value, not the label "Ward"; "Team Alpha" is a club name that starts with a label word
+    assert "ward" not in L.read("player", [ln("Wardhere", 100)])
+    assert L.read("club", [ln("Name of Club: Team Alpha Sports", 100)])["club_name"]["value"] == "Team Alpha Sports"
+    assert L.read("player", [ln("Sports Day Form", 100)]) == {}
+
+
+def test_garbled_labels_and_levels_from_a_poor_scan_are_recovered():
+    """Strings from a real OCR run over a dim, blurred phone photo."""
+    from app import label_reader as L
+    from app.imports import clean
+    def ln(t, y): return {"text": t, "confidence": 0.84, "bbox": [60, y, 400, 30]}
+    got = L.read("player", [ln("REPUBLICOFKENYA-SPORTSREGISTRY-PLAYERFORM", 40), ln("Names:PETEROTIENO ODHIAMBO", 100), ln("DO.B:03/11/1998", 140),
+                            ln("E-mait:peter.ojexample.co.ke", 180), ln("Diseiplie: Football", 220), ln("Category:Sem-Profesuonal", 260),
+                            ln("County Nairohd", 300), ln("Coustitueney Embekasi East", 340), ln("Ward:Lower Savanna", 380)])
+    assert got["dob"]["value"] == "03/11/1998" and got["email"]["value"] == "peter.ojexample.co.ke" and got["sport"]["value"] == "Football"
+    assert got["level"]["value"] == "Sem-Profesuonal" and got["county"]["value"] == "Nairohd" and got["sub_county"]["value"] == "Embekasi East"
+    f, warn, place = clean("player", {k: v["value"] for k, v in got.items()})
+    assert f["level"] == "Semi-Professional" and f["county"] == "Nairobi" and f["sub_county"] == "Embakasi East" and f["sport"] == "football"
+    assert any("email" in w.lower() for w in warn)  # the lost @ is flagged for the officer
+    # titles are not mistaken for fields
+    assert L.read("player", [ln("MINISTRY OF SPORTS REGISTRY", 40), ln("Sports Day Form", 80)]) == {}
+
+
+def test_a_name_with_lost_spaces_is_flagged_for_the_officer():
+    from app.imports import clean
+    assert any("spaces" in w for w in clean("player", {"name": "PETEROTIENOODHIAMBO"})[1])
+    assert not any("spaces" in w for w in clean("player", {"name": "Peter Otieno Odhiambo"})[1])

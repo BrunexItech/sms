@@ -26,6 +26,7 @@ from .rbac import STAFF_ROLES, can
 
 router = APIRouter(prefix="/api/imports")
 
+EMAIL_RE = re.compile(r"^\S+@\S+\.\S+$")
 MAX_SCAN = 12 * 1024 * 1024
 DOC_TYPES = ("player", "club")
 LEVEL_DEFAULT = "Amateur"
@@ -101,9 +102,40 @@ def norm_phone(s: str) -> str:
     return f"+254{d}" if len(d) == 9 and d[0] in "17" else ""
 
 
+# Characters that OCR confuses: in a number read the letter for the digit, in a code's letter part read the digit for the letter.
+_TO_DIGIT = str.maketrans({"O": "0", "o": "0", "I": "1", "l": "1", "|": "1", "S": "5", "B": "8", "Z": "2"})
+_TO_LETTER = str.maketrans({"0": "O", "1": "I", "5": "S", "8": "B"})
+
+
 def norm_kra(s: str) -> str:
     v = re.sub(r"[\s-]", "", (s or "").upper())
+    if len(v) == 11 and v[0] in "AP0" and v[-1].isalpha() or (len(v) == 11 and v[0] in "AP" and v[-1] in "0158"):
+        # A123456789Z: letter, nine digits, letter. Repair look-alikes in the digit part and the two letters.
+        mid = v[1:10].translate(_TO_DIGIT)
+        first = ("A" if v[0] == "0" else v[0])
+        last = v[-1].translate(_TO_LETTER)
+        v = first + mid + last
     return v if re.fullmatch(r"[AP]\d{9}[A-Z]", v) else ""
+
+
+def fix_digits(s: str) -> str:
+    """A national ID is digits only; repair a letter OCR mistook for a digit when the value is clearly a number."""
+    v = re.sub(r"[\s-]", "", s or "")
+    digits = sum(c.isdigit() for c in v)
+    # the first character is left alone: a passport number may legitimately start with a letter (A1234567, B1234567)
+    return v[0] + v[1:].translate(_TO_DIGIT) if v and 6 <= len(v) <= 10 and digits >= len(v) * 0.7 and any(c in "OoIl|SBZ" for c in v[1:]) else s
+
+
+def fix_reg_no(s: str) -> str:
+    """Registration numbers look like SOC/2019/04512: letters, then numbers. Repair a zero read inside the letters."""
+    v = (s or "").strip()
+    parts = v.split("/")
+    if len(parts) < 2:
+        return v
+    head = parts[0]
+    if len(head) >= 2 and sum(c.isalpha() for c in head) >= len(head) / 2:
+        parts[0] = head.translate(_TO_LETTER)
+    return "/".join([parts[0]] + [p.translate(_TO_DIGIT) if p and sum(c.isdigit() for c in p) >= len(p) * 0.6 else p for p in parts[1:]])
 
 
 def norm_id(s: str) -> str:
@@ -145,8 +177,13 @@ def _best(name: str, options: list[tuple[str, str]], cutoff: float = 0.78) -> st
 def match_place(county: str, sub: str, ward: str) -> dict:
     out = {"countyId": "", "subId": "", "wardId": ""}
     counties = R.admin()["counties"]
-    cid = _best(county, [(c["id"], c["n"]) for c in counties])
+    cid = _best(county, [(c["id"], c["n"]) for c in counties], cutoff=0.7)
     c = next((x for x in counties if x["id"] == cid), None)
+    if not c and sub:
+        # the county was unreadable but the sub-county names it ("Embakasi East" can only be in Nairobi)
+        owner = {s["id"]: x for x in counties for s in x["s"]}
+        sid = _best(sub, [(s["id"], s["n"]) for x in counties for s in x["s"]], cutoff=0.8)
+        c = owner.get(sid)
     if not c:
         return out
     out["countyId"] = c["id"]
@@ -189,8 +226,10 @@ def clean(doc_type: str, raw: dict) -> tuple[dict, list[str], dict]:
         out["kra"] = norm_kra(f["kra"]) or f["kra"]
         if not norm_kra(f["kra"]):
             warn.append("The KRA PIN does not look right (A123456789Z).")
+    if f.get("org_reg_no"):
+        out["org_reg_no"] = fix_reg_no(f["org_reg_no"])
     if f.get("id_no"):
-        out["id_no"] = norm_id(f["id_no"]) or f["id_no"]
+        out["id_no"] = norm_id(fix_digits(f["id_no"])) or f["id_no"]
         if not norm_id(f["id_no"]):
             warn.append("The ID or passport number does not look right (6 to 10 letters or digits).")
     for k in ("dob", "issue_date", "expiry_date"):
@@ -198,12 +237,32 @@ def clean(doc_type: str, raw: dict) -> tuple[dict, list[str], dict]:
             out[k] = norm_date(f[k]) or f[k]
             if not norm_date(f[k]):
                 warn.append(f"Enter {k.replace('_', ' ')} as a date, for example 15/04/1990.")
+    if f.get("name") and " " not in f["name"].strip():
+        warn.append("The name is one word. The reader may have lost the spaces between the names: check it against the scan.")
+    if f.get("level"):
+        # "Sem-Profesuonal" is nearest to "Semi-Professional"; anything far from every level is left for the officer
+        near = difflib.get_close_matches(f["level"].strip().casefold(), [l.casefold() for l in R.LEVELS], n=1, cutoff=0.6)
+        out["level"] = next((l for l in R.LEVELS if near and l.casefold() == near[0]), f["level"])
+        if not near:
+            warn.append("Choose the competition level from the list.")
+    if f.get("email") and not EMAIL_RE.match(f["email"]):
+        warn.append("The email address does not look right (check the @).")
     if f.get("sport"):
         sid = sport_id(f["sport"])
         out["sport"] = sid or f["sport"]
         if not sid:
             warn.append("The sport was not recognised. Choose it from the list.")
     place = match_place(f.get("county", ""), f.get("sub_county", ""), f.get("ward", ""))
+    # show the official spelling once a place is matched ("KayoleNorth" becomes "Kayole North"), so the dropdowns pick it up
+    c = next((x for x in R.admin()["counties"] if x["id"] == place["countyId"]), None)
+    if c:
+        out["county"] = c["n"]
+        s = next((x for x in c["s"] if x["id"] == place["subId"]), None)
+        if s:
+            out["sub_county"] = s["n"]
+            w = next((x for x in s["w"] if x["id"] == place["wardId"]), None)
+            if w:
+                out["ward"] = w["n"]
     if f.get("county") and not place["countyId"]:
         warn.append("The county was not recognised. Choose it from the list.")
     elif place["countyId"] and f.get("sub_county") and not place["subId"]:
@@ -298,7 +357,7 @@ async def upload(doc_type: str = Form(...), file: UploadFile = File(...), scanne
         sug = ocr_client.prefill(doc_type, data, (file.filename or "scan")[:120], found[1])
     t = now()
     r = LegacyImport(id=iid, doc_type=doc_type, file_name=(file.filename or "scan")[:120], mime=found[1], size=len(data), path=str(path),
-                     fields={k: v["value"] for k, v in sug["fields"].items()}, ocr=sug, created_by=u.id, created_at=t, updated_at=t)
+                     fields=clean(doc_type, {k: v["value"] for k, v in sug["fields"].items()})[0], ocr=sug, created_by=u.id, created_at=t, updated_at=t)
     db.add(r)
     log(db, u, "Uploaded a paper record", iid)
     db.flush()
@@ -394,7 +453,7 @@ def save(iid: str, d: FieldsIn, db: Session = Depends(get_db), u: User = Depends
     r = get_import(db, u, iid)
     if r.status != "Pending":
         err(409, "This paper record is already closed.")
-    r.fields = {k[:40]: v[:300] for k, v in d.fields.items()}
+    r.fields = clean(r.doc_type, {k[:40]: v[:300] for k, v in d.fields.items()})[0]
     r.updated_at = now()
     db.commit()
     return {"import": out(r)}
