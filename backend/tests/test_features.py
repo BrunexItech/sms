@@ -866,3 +866,34 @@ def test_a_name_with_lost_spaces_is_flagged_for_the_officer():
     from app.imports import clean
     assert any("spaces" in w for w in clean("player", {"name": "PETEROTIENOODHIAMBO"})[1])
     assert not any("spaces" in w for w in clean("player", {"name": "Peter Otieno Odhiambo"})[1])
+
+
+def test_a_pdf_is_split_into_one_paper_record_per_page(staff, monkeypatch):
+    import io
+    from reportlab.pdfgen import canvas as rl
+    from app import ocr_client, settings as S
+    nbo = staff("nairobi.sports@sports.example.ke")
+    buf = io.BytesIO()
+    c = rl.Canvas(buf)
+    for n in range(2):
+        c.setFont("Helvetica", 18)
+        c.drawString(72, 700, f"Full Name: Test Person Page{n + 1}")
+        c.drawString(72, 660, f"ID No: 3456789{n}")
+        c.showPage()
+    c.save()
+    seen = []
+
+    class Rsp:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return {"lines": [{"text": "Full Name: PDF PERSON", "confidence": 0.9, "bbox": [60, 100, 300, 30]}]}
+    def fake_post(url, headers=None, files=None, **k):
+        seen.append(files["file"][2]); return Rsp()
+    monkeypatch.setattr(S, "OCR_API_KEY", "k")
+    monkeypatch.setattr(ocr_client.requests, "post", fake_post)
+    res = nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": ("forms.pdf", buf.getvalue(), "application/pdf")}).json()
+    assert len(res["imports"]) == 2 and [r["fileName"] for r in res["imports"]] == ["forms (page 1).png", "forms (page 2).png"]
+    assert all(r["mime"] == "image/png" and r["readerOn"] and r["fields"]["name"] == "Pdf Person" for r in res["imports"])
+    assert seen == ["image/png", "image/png"]  # the reader receives images, never the PDF
+    img = nbo.get(f"/api/imports/{res['imports'][0]['id']}/image")
+    assert img.status_code == 200 and img.content[:8] == b"\x89PNG\r\n\x1a\n"

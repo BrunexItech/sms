@@ -53,3 +53,6 @@ backend/migrations/versions/__pycache__/
 
 # keep the example env file tracked
 !.env.example
+
+# server backups
+backups/

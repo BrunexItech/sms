@@ -138,9 +138,12 @@ export default function Page() {
         fd.append("doc_type", docType);
         fd.append("file", f);
         if (scanned) fd.append("scanned", scanned);
-        const r = await upload<{ import: Rec; autoImported: boolean }>("/imports", fd);
-        if (r.autoImported) auto++;
-        else { check++; firstPending ??= r.import.id; }
+        const r = await upload<{ import: Rec; imports?: Rec[]; autoCount?: number }>("/imports", fd);
+        // a PDF becomes one paper record per page
+        for (const rec of r.imports ?? [r.import]) {
+          if (rec.status === "Imported") auto++;
+          else { check++; firstPending ??= rec.id; }
+        }
       } catch (x) {
         failed++;
         notify(`${f.name}: ${errText(x)}`, "error", "Upload failed");

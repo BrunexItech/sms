@@ -300,6 +300,26 @@ def out(r: LegacyImport) -> dict:
             "applicationId": r.application_id, "note": r.note, "createdAt": r.created_at, "updatedAt": r.updated_at}
 
 
+MAX_PDF_PAGES = 20
+
+
+def pdf_pages(data: bytes) -> list[bytes]:
+    """Each page of a PDF as a PNG (about 150 dpi), so a PDF is read page by page like any scan. Empty if it cannot be opened."""
+    try:
+        import io
+
+        import pypdfium2 as pdfium
+        pdf = pdfium.PdfDocument(data)
+        out = []
+        for i in range(min(len(pdf), MAX_PDF_PAGES)):
+            buf = io.BytesIO()
+            pdf[i].render(scale=2.1).to_pil().convert("RGB").save(buf, "PNG")
+            out.append(buf.getvalue())
+        return out
+    except Exception:  # a damaged or protected PDF is stored as it is and keyed by hand
+        return []
+
+
 # ───────────── routes ─────────────
 class EmbedIn(In):
     doc_type: str = "player"
@@ -343,6 +363,23 @@ async def upload(doc_type: str = Form(...), file: UploadFile = File(...), scanne
     found = sniff(data[:16])
     if not found or found[0] not in ("photo", "document"):
         err(422, "Upload a JPG, PNG, WebP or PDF scan.")
+    pages = [(data, found[1], (file.filename or "scan")[:120])]
+    if found[1] == "application/pdf" and not scanned:
+        imgs = pdf_pages(data)
+        if imgs:  # one paper record per page: a page is one form
+            base = (file.filename or "scan").rsplit(".", 1)[0][:100]
+            pages = [(img, "image/png", f"{base} (page {n}).png" if len(imgs) > 1 else f"{base}.png") for n, img in enumerate(imgs, 1)]
+    made, auto = [], None
+    for pdata, pmime, pname in pages:
+        rec, a = _make_record(db, u, doc_type, pdata, pmime, pname, scanned)
+        made.append(rec)
+        auto = auto or a
+    db.commit()
+    return {"import": out(made[0]), "imports": [out(r) for r in made], "autoImported": bool(auto), "applicationId": auto.id if auto else None,
+            "autoCount": sum(1 for r in made if r.status == "Imported")}
+
+
+def _make_record(db: Session, u: User, doc_type: str, data: bytes, mime: str, name: str, scanned: str):
     iid = uuid4().hex
     MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     path = MEDIA_DIR / f"import-{iid}"
@@ -354,16 +391,14 @@ async def upload(doc_type: str = Form(...), file: UploadFile = File(...), scanne
             fields = {}
         sug = {"available": bool(fields), "fields": fields, "message": "" if fields else "The scanner found no fields on this page. Enter them by hand."}
     else:
-        sug = ocr_client.prefill(doc_type, data, (file.filename or "scan")[:120], found[1])
+        sug = ocr_client.prefill(doc_type, data, name, mime)
     t = now()
-    r = LegacyImport(id=iid, doc_type=doc_type, file_name=(file.filename or "scan")[:120], mime=found[1], size=len(data), path=str(path),
+    r = LegacyImport(id=iid, doc_type=doc_type, file_name=name, mime=mime, size=len(data), path=str(path),
                      fields=clean(doc_type, {k: v["value"] for k, v in sug["fields"].items()})[0], ocr=sug, created_by=u.id, created_at=t, updated_at=t)
     db.add(r)
     log(db, u, "Uploaded a paper record", iid)
     db.flush()
-    a = try_auto(db, u, r)
-    db.commit()
-    return {"import": out(r), "autoImported": bool(a), "applicationId": a.id if a else None}
+    return r, try_auto(db, u, r)
 
 
 class RuleIn(In):

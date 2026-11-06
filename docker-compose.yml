@@ -33,6 +33,28 @@ services:
     depends_on: [api]
     ports: ["127.0.0.1:${WEB_PORT:-8090}:3000"]
 
+  # Daily backup of the database and the uploaded files into ./backups. Runs once at start, then every 24 hours.
+  # It only ever adds files; clearing out old backups is done by hand (see docs/deploy.md).
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+      - uploads:/uploads:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          d=$$(date +%Y%m%d-%H%M)
+          pg_dump -h db -U sports sports | gzip > /backups/db-$$d.sql.gz && echo "database backup $$d ok" || echo "database backup $$d FAILED"
+          tar -czf /backups/uploads-$$d.tar.gz -C /uploads . && echo "uploads backup $$d ok" || echo "uploads backup $$d FAILED"
+          sleep 86400
+        done
+
 volumes:
   dbdata:
   uploads:

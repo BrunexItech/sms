@@ -40,7 +40,15 @@ Sign in with `BOOTSTRAP_ADMIN_EMAIL`/`BOOTSTRAP_ADMIN_PASSWORD`. You are sent to
 5. Going live later: set `MPESA_ENV=production` and your real shortcode, consumer key/secret and passkey. Nothing else changes.
 
 ## 4. Backups
-Back up the `dbdata` (PostgreSQL) and `uploads` volumes. Example: `docker compose exec db pg_dump -U sports sports > backup.sql`.
+A `backup` service runs with the rest of the stack. When it starts, and then every 24 hours, it writes two files into `~/sports/backups/`:
+`db-YYYYMMDD-HHMM.sql.gz` (the database) and `uploads-YYYYMMDD-HHMM.tar.gz` (uploaded files and scans).
+It only adds files. Look at it with `ls -lh ~/sports/backups` and `docker-compose logs backup`.
+
+- **Keep copies off the server.** A backup on the same machine does not survive losing the machine. Copy the folder to another computer regularly, for example `scp -r user@server:~/sports/backups ./sports-backups`.
+- **Tidy old files by hand** when the folder gets large, deleting the oldest `db-` and `uploads-` files you no longer need.
+- **Restore the database** (this replaces current data, so do it only to recover): stop the app with `docker-compose stop api web`, then
+  `gunzip -c backups/db-YYYYMMDD-HHMM.sql.gz | docker-compose exec -T db psql -U sports sports`, then `docker-compose start api web`.
+- **Restore uploads:** `docker-compose run --rm -v "$PWD/backups:/backups" api sh -c "tar -xzf /backups/uploads-YYYYMMDD-HHMM.tar.gz -C /data/uploads"`.
 
 ## 5. Updating
 `git pull && docker compose up -d --build`. Database changes ship as Alembic migrations and are applied on start.
