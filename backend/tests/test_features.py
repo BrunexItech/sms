@@ -774,3 +774,32 @@ def test_scans_can_be_deleted_and_expire(staff, client_factory):
         assert db.get(LegacyImport, old["id"]).path == "" and db.get(LegacyImport, fresh["id"]).path and db.get(LegacyImport, pending["id"]).path
     assert admin.put("/api/imports/rule", json={"auto": False, "minConfidence": 0.85, "retentionDays": 7}).json()["retentionDays"] == 7
     assert admin.put("/api/imports/rule", json={"auto": False, "minConfidence": 0.85, "retentionDays": 30}).status_code == 200
+
+
+def test_complete_delete_for_testing_frees_the_document_for_another_try(staff, monkeypatch):
+    from pathlib import Path
+    from app import settings as S
+    from app.db import SessionLocal
+    from app.models import Application as App, LegacyImport
+    nbo, admin = staff("nairobi.sports@sports.example.ke"), staff("super.admin@sports.example.ke")
+    c = next(x for x in R.admin()["counties"] if x["n"] == "Nairobi")
+    s = c["s"][0]
+    fields = {"name": "Test Person Retry", "id_no": "56789012", "dob": "01/01/1995", "gender": "Male", "sport": "football", "level": "Amateur",
+              "county": "Nairobi", "sub_county": s["n"], "ward": s["w"][0]["n"]}
+    rec = _scan(nbo)
+    nbo.put(f"/api/imports/{rec['id']}", json={"fields": fields})
+    done = nbo.post(f"/api/imports/{rec['id']}/import").json()
+    # switched off by default: nothing can be deleted completely
+    assert admin.delete(f"/api/imports/{rec['id']}").status_code == 403
+    monkeypatch.setattr(S, "ALLOW_IMPORT_TEST_DELETE", True)
+    assert nbo.delete(f"/api/imports/{rec['id']}").status_code == 403  # administrators only
+    with SessionLocal() as db:
+        path = Path(db.get(LegacyImport, rec["id"]).path)
+    assert admin.delete(f"/api/imports/{rec['id']}").status_code == 200
+    with SessionLocal() as db:
+        assert db.get(LegacyImport, rec["id"]) is None and db.get(App, done["applicationId"]) is None
+    assert not path.exists()
+    # the same document can now be scanned and imported again (no duplicate-ID block)
+    again = _scan(nbo)
+    nbo.put(f"/api/imports/{again['id']}", json={"fields": fields})
+    assert nbo.post(f"/api/imports/{again['id']}/import").status_code == 200

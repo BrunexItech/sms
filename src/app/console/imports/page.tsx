@@ -46,7 +46,7 @@ export default function Page() {
   const [turn, setTurn] = useState(0);
   const [filter, setFilter] = useState<"Pending" | "Imported" | "Rejected">("Pending");
   const [reader, setReader] = useState<{ configured: boolean; ok: boolean; message: string } | null>(null);
-  const [rule, setRule] = useState<{ auto: boolean; minConfidence: number; retentionDays: number } | null>(null);
+  const [rule, setRule] = useState<{ auto: boolean; minConfidence: number; retentionDays: number; testDelete?: boolean } | null>(null);
   useEffect(() => {
     let off = false;
     api<{ auto: boolean; minConfidence: number; retentionDays: number }>("/imports/rule").then((r) => !off && setRule(r)).catch(() => {});
@@ -60,6 +60,20 @@ export default function Page() {
       notify(r.retentionDays ? `Scans of finished records are deleted ${r.retentionDays} days later.` : "Scans of finished records are kept until someone deletes them.", "ok", "Scan retention changed");
     } catch (x) {
       notify(errText(x), "error", "Could not change retention");
+    }
+  };
+  const deleteCompletely = async () => {
+    if (!rec || !confirm("TESTING: delete this paper record completely?\n\nThis removes the scan, the record, and the registration made from it, so you can scan the same document again. It cannot be undone.")) return;
+    setBusy("purge");
+    try {
+      await api(`/imports/${rec.id}`, "DELETE");
+      setSel(null);
+      await load();
+      notify("Everything about this record is gone. You can scan the same document again.", "ok", "Deleted completely");
+    } catch (x) {
+      notify(errText(x), "error", "Could not delete");
+    } finally {
+      setBusy("");
     }
   };
   const deleteScan = async () => {
@@ -278,6 +292,9 @@ export default function Page() {
               <section className="min-w-0 rounded-2xl border border-line bg-white p-3 lg:sticky lg:top-24">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <p className="truncate text-sm font-bold">{rec.fileName}</p>
+                  {rule?.testDelete && can("settings.manage") && (
+                    <button onClick={deleteCompletely} disabled={busy === "purge"} title="Testing only: delete the scan, the record and the registration made from it" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-kenya-red px-2.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-60"><Trash2 size={14} /> Delete completely</button>
+                  )}
                   {!rec.scanDeleted && (
                     <div className="flex gap-1.5">
                       <button onClick={deleteScan} disabled={busy === "delete"} aria-label="Delete scan" title="Delete this scan from the server" className="grid h-8 w-8 place-items-center rounded-lg border border-line text-kenya-red hover:bg-red-50 disabled:opacity-60"><Trash2 size={15} /></button>

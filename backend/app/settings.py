@@ -25,6 +25,9 @@ SIMULATE_PAYMENTS = (not MPESA_READY) and os.getenv("SIMULATE_PAYMENTS", "1" if 
 # Optional reader for scanned paper records (free, self-hosted). Without a key the import screen works by hand.
 OCR_URL = os.getenv("OCR_URL", "https://ocr.oqtekal.com").rstrip("/")
 OCR_API_KEY = os.getenv("OCR_API_KEY", "")
+# TESTING ONLY: lets an administrator delete a paper record completely, including the registration it created, so the same
+# document can be imported again. Leave off (0) in live production.
+ALLOW_IMPORT_TEST_DELETE = os.getenv("ALLOW_IMPORT_TEST_DELETE", "0") == "1"
 # the reader's document type ids for our two paper forms (created once in the reader's admin); they pick which fields it extracts
 OCR_TYPE_PLAYER = os.getenv("OCR_TYPE_PLAYER", "")
 OCR_TYPE_CLUB = os.getenv("OCR_TYPE_CLUB", "")

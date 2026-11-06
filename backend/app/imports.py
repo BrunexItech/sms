@@ -37,7 +37,7 @@ REQUIRED = {"player": ["name", "id_no", "dob", "gender", "sport", "county", "sub
 def auto_rule(db: Session) -> dict:
     row = db.get(Setting, "import_rule")
     # retentionDays: scans of imported or set-aside records are deleted this many days later (0 keeps them)
-    return {"auto": False, "minConfidence": 0.85, "retentionDays": 30, **(row.value if row else {})}
+    return {"auto": False, "minConfidence": 0.85, "retentionDays": 30, **(row.value if row else {}), "testDelete": C.ALLOW_IMPORT_TEST_DELETE}
 
 
 def erase_scan(r: LegacyImport) -> bool:
@@ -322,7 +322,7 @@ def set_rule(d: RuleIn, db: Session = Depends(get_db), u: User = Depends(need_us
     row = db.get(Setting, "import_rule") or Setting(key="import_rule", value={})
     if not 0 <= d.retention_days <= 365:
         err(422, "Keep scans for 0 (forever) to 365 days.")
-    row.value = {"auto": d.auto, "minConfidence": d.min_confidence, "retentionDays": d.retention_days}
+    row.value = {"auto": d.auto, "minConfidence": d.min_confidence, "retentionDays": d.retention_days}  # testDelete comes from the server settings only
     db.merge(row)
     log(db, u, f"Paper import: automatic {'on' if d.auto else 'off'}, min {round(d.min_confidence * 100)}%, scans kept {d.retention_days} days", "settings")
     db.commit()
@@ -337,6 +337,29 @@ def get_rule(db: Session = Depends(get_db), u: User = Depends(staff_user)):
 @router.get("/{iid}")
 def one(iid: str, db: Session = Depends(get_db), u: User = Depends(staff_user)):
     return {"import": out(get_import(db, u, iid))}
+
+
+@router.delete("/{iid}")
+def delete_completely(iid: str, db: Session = Depends(get_db), u: User = Depends(need_user)):
+    """TESTING ONLY (ALLOW_IMPORT_TEST_DELETE=1): remove the scan, the paper record and the registration it created."""
+    if not C.ALLOW_IMPORT_TEST_DELETE:
+        err(403, "Complete deletion is switched off on this server.")
+    if not can(u, "settings.manage"):
+        err(403, "Only an administrator can delete a paper record completely.")
+    r = db.get(LegacyImport, iid)
+    if not r:
+        err(404, "Paper record not found.")
+    if r.application_id:
+        a = db.get(Application, r.application_id)
+        if a:
+            if not a.legacy or a.status == "Approved":
+                err(409, "The registration made from this record is already verified, so it cannot be deleted here.")
+            db.delete(a)
+    erase_scan(r)
+    log(db, u, "Deleted a paper record completely (testing)", iid)
+    db.delete(r)
+    db.commit()
+    return {"deleted": iid}
 
 
 @router.delete("/{iid}/scan")
