@@ -746,7 +746,7 @@ def test_uploaded_image_is_read_by_the_readers_form_type(staff, monkeypatch):
     assert pdf["readerOn"] is False and "image" in pdf["reader"]
 
 
-def test_scans_can_be_deleted_and_expire(staff, client_factory):
+def test_deleting_a_paper_record_removes_it_completely_and_old_ones_expire(staff, client_factory):
     from datetime import datetime, timedelta, timezone
     from pathlib import Path
     from app.db import SessionLocal
@@ -754,55 +754,32 @@ def test_scans_can_be_deleted_and_expire(staff, client_factory):
     from app.models import LegacyImport
     nbo, admin = staff("nairobi.sports@sports.example.ke"), staff("super.admin@sports.example.ke")
     rec = _scan(nbo)
-    path = Path(next(r for r in [SessionLocal().get(LegacyImport, rec["id"])]).path)
+    with SessionLocal() as db:
+        path = Path(db.get(LegacyImport, rec["id"]).path)
     assert path.exists() and nbo.get(f"/api/imports/{rec['id']}/image").status_code == 200
-    assert client_factory().delete(f"/api/imports/{rec['id']}/scan").status_code == 401
-    gone = nbo.delete(f"/api/imports/{rec['id']}/scan")
-    assert gone.status_code == 200 and gone.json()["import"]["scanDeleted"] is True and not path.exists()
-    assert nbo.get(f"/api/imports/{rec['id']}/image").status_code == 410
-    assert nbo.delete(f"/api/imports/{rec['id']}/scan").status_code == 409
+    assert client_factory().delete(f"/api/imports/{rec['id']}").status_code == 401
+    assert nbo.delete(f"/api/imports/{rec['id']}").status_code == 200
+    # nothing is left: no file, no row, not in any list
+    assert not path.exists()
+    assert nbo.get(f"/api/imports/{rec['id']}").status_code == 404 and nbo.get(f"/api/imports/{rec['id']}/image").status_code == 404
+    assert rec["id"] not in [x["id"] for x in admin.get("/api/imports").json()["imports"]]
+    with SessionLocal() as db:
+        assert db.get(LegacyImport, rec["id"]) is None
 
-    # an old closed record loses its scan in the daily sweep; a pending one never does
+    # a finished record older than the retention period is removed completely by the daily sweep; a pending one never is
     old, fresh, pending = _scan(nbo), _scan(nbo), _scan(nbo)
     nbo.post(f"/api/imports/{old['id']}/reject", json={"note": "x"})
     nbo.post(f"/api/imports/{fresh['id']}/reject", json={"note": "x"})
     with SessionLocal() as db:
         db.get(LegacyImport, old["id"]).updated_at = (datetime.now(timezone.utc) - timedelta(days=40)).isoformat(timespec="seconds")
         db.get(LegacyImport, pending["id"]).updated_at = (datetime.now(timezone.utc) - timedelta(days=400)).isoformat(timespec="seconds")
+        old_path = Path(db.get(LegacyImport, old["id"]).path)
         db.commit()
         assert purge_scans(db) >= 1
-        assert db.get(LegacyImport, old["id"]).path == "" and db.get(LegacyImport, fresh["id"]).path and db.get(LegacyImport, pending["id"]).path
+        assert db.get(LegacyImport, old["id"]) is None and not old_path.exists()
+        assert db.get(LegacyImport, fresh["id"]) is not None and db.get(LegacyImport, pending["id"]) is not None
     assert admin.put("/api/imports/rule", json={"auto": False, "minConfidence": 0.85, "retentionDays": 7}).json()["retentionDays"] == 7
     assert admin.put("/api/imports/rule", json={"auto": False, "minConfidence": 0.85, "retentionDays": 30}).status_code == 200
-
-
-def test_complete_delete_for_testing_frees_the_document_for_another_try(staff, monkeypatch):
-    from pathlib import Path
-    from app import settings as S
-    from app.db import SessionLocal
-    from app.models import Application as App, LegacyImport
-    nbo, admin = staff("nairobi.sports@sports.example.ke"), staff("super.admin@sports.example.ke")
-    c = next(x for x in R.admin()["counties"] if x["n"] == "Nairobi")
-    s = c["s"][0]
-    fields = {"name": "Test Person Retry", "id_no": "56789012", "dob": "01/01/1995", "gender": "Male", "sport": "football", "level": "Amateur",
-              "county": "Nairobi", "sub_county": s["n"], "ward": s["w"][0]["n"]}
-    rec = _scan(nbo)
-    nbo.put(f"/api/imports/{rec['id']}", json={"fields": fields})
-    done = nbo.post(f"/api/imports/{rec['id']}/import").json()
-    # switched off by default: nothing can be deleted completely
-    assert admin.delete(f"/api/imports/{rec['id']}").status_code == 403
-    monkeypatch.setattr(S, "ALLOW_IMPORT_TEST_DELETE", True)
-    assert nbo.delete(f"/api/imports/{rec['id']}").status_code == 403  # administrators only
-    with SessionLocal() as db:
-        path = Path(db.get(LegacyImport, rec["id"]).path)
-    assert admin.delete(f"/api/imports/{rec['id']}").status_code == 200
-    with SessionLocal() as db:
-        assert db.get(LegacyImport, rec["id"]) is None and db.get(App, done["applicationId"]) is None
-    assert not path.exists()
-    # the same document can now be scanned and imported again (no duplicate-ID block)
-    again = _scan(nbo)
-    nbo.put(f"/api/imports/{again['id']}", json={"fields": fields})
-    assert nbo.post(f"/api/imports/{again['id']}/import").status_code == 200
 
 
 def test_values_misread_by_real_ocr_are_repaired():
@@ -941,3 +918,119 @@ def test_email_status_and_test_message(staff, monkeypatch):
     monkeypatch.setattr(notify, "send_now", lambda *a: "SMTPAuthenticationError: bad password")
     r = admin.post("/api/control/email/test")
     assert r.status_code == 502 and "bad password" in r.json()["detail"]
+
+
+def _png(w=1200, h=1600, blur=0.0, shade=255):
+    import io, random
+    from PIL import Image, ImageDraw, ImageFilter
+    im = Image.new("RGB", (w, h), (shade, shade, shade))
+    d = ImageDraw.Draw(im)
+    r = random.Random(3)
+    for y in range(60, h - 60, 40):  # rows of text-like strokes
+        x = 60
+        while x < w - 120:
+            ww = r.randint(18, 90)
+            d.rectangle((x, y, x + ww, y + 16), fill=(20, 20, 20))
+            x += ww + 14
+    if blur:
+        im = im.filter(ImageFilter.GaussianBlur(blur)).resize((w // 2, h // 2))
+    buf = io.BytesIO()
+    im.save(buf, "PNG")
+    return buf.getvalue()
+
+
+def test_poor_scans_are_flagged_and_the_same_file_twice_is_noticed(staff):
+    nbo = staff("nairobi.sports@sports.example.ke")
+    up = lambda data, name: nbo.post("/api/imports", data={"doc_type": "player"}, files={"file": (name, data, "image/png")}).json()["import"]
+    good = up(_png(), "good.png")
+    assert good["quality"]["ok"] is True and good["quality"]["issues"] == [] and good["duplicateOf"] is None
+    bad = up(_png(w=1000, h=1400, blur=6.0), "blurry.png")
+    assert bad["quality"]["ok"] is False and any("blurry" in i or "small" in i for i in bad["quality"]["issues"])
+    dark = up(_png(shade=40), "dark.png")
+    assert any("dark" in i for i in dark["quality"]["issues"])
+    again = up(_png(), "good-again.png")  # byte-identical to the first upload
+    assert again["duplicateOf"] and again["duplicateOf"]["id"] == good["id"]
+
+
+def test_one_form_over_several_pages_merges_the_fields(staff, monkeypatch):
+    import io
+    from reportlab.pdfgen import canvas as rl
+    from app import ocr_client, settings as S
+    nbo = staff("nairobi.sports@sports.example.ke")
+    buf = io.BytesIO()
+    c = rl.Canvas(buf)
+    for n in range(2):
+        c.drawString(72, 700, f"page {n + 1}")
+        c.showPage()
+    c.save()
+    answers = iter([{"lines": [{"text": "Full Name: Two Page Person", "confidence": 0.9, "bbox": [60, 100, 300, 30]}]},
+                    {"lines": [{"text": "Full Name: WRONG LATER NAME", "confidence": 0.9, "bbox": [60, 100, 300, 30]},
+                               {"text": "ID No: 45678901", "confidence": 0.9, "bbox": [60, 150, 300, 30]}]}])
+
+    class Rsp:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return next(answers)
+    monkeypatch.setattr(S, "OCR_API_KEY", "k")
+    monkeypatch.setattr(ocr_client.requests, "post", lambda *a, **k: Rsp())
+    res = nbo.post("/api/imports", data={"doc_type": "player", "one_form": "1"}, files={"file": ("two.pdf", buf.getvalue(), "application/pdf")}).json()
+    assert len(res["imports"]) == 1 and res["import"]["pageCount"] == 2
+    assert res["import"]["fields"]["name"] == "Two Page Person" and res["import"]["fields"]["id_no"] == "45678901"  # page 2 fills the gap, never overwrites
+    assert nbo.get(f"/api/imports/{res['import']['id']}/image?page=2").status_code == 200
+    assert nbo.get(f"/api/imports/{res['import']['id']}/image?page=3").status_code == 410
+    from pathlib import Path
+    from app.db import SessionLocal
+    from app.models import LegacyImport
+    with SessionLocal() as db:
+        files = [Path(db.get(LegacyImport, res["import"]["id"]).path), *map(Path, db.get(LegacyImport, res["import"]["id"]).ocr["pages"])]
+    assert all(f.exists() for f in files)
+    assert nbo.delete(f"/api/imports/{res['import']['id']}").status_code == 200
+    assert not any(f.exists() for f in files)  # every page file goes with the record
+
+
+def test_suspect_fields_are_flagged_and_accuracy_is_counted(staff, monkeypatch):
+    from app import ocr_client, settings as S
+    nbo, admin = staff("nairobi.sports@sports.example.ke"), staff("super.admin@sports.example.ke")
+    c = next(x for x in R.admin()["counties"] if x["n"] == "Nairobi")
+    s = c["s"][0]
+    lines = [("Full Name", "PETEROTIENOODHIAMBO"), ("ID No", "12345678"), ("Date of Birth", "01/02/1995"), ("Gender", "Male"), ("Sport", "Athletics"),
+             ("County", "Nairobi"), ("Sub-County", s["n"]), ("Ward", s["w"][0]["n"]), ("Phone", "0712345678")]
+
+    class Rsp:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return {"lines": [{"text": f"{k}: {v}", "confidence": 0.9, "bbox": [60, 80 + i * 45, 320, 30]} for i, (k, v) in enumerate(lines)]}
+    monkeypatch.setattr(S, "OCR_API_KEY", "k")
+    monkeypatch.setattr(ocr_client.requests, "post", lambda *a, **k: Rsp())
+    before = admin.get("/api/imports/accuracy").json()
+    rec = _scan(nbo)
+    assert "name" in rec["flags"] and "spaces" in rec["flags"]["name"] and "id_no" not in rec["flags"]   # the merged name is the one to check
+    # the officer fixes the name and adds the email the reader missed, then approves
+    fixed = {**rec["fields"], "name": "Peter Otieno Odhiambo", "email": "p@example.co.ke"}
+    assert nbo.put(f"/api/imports/{rec['id']}", json={"fields": fixed}).json()["import"]["flags"] == {}
+    assert nbo.post(f"/api/imports/{rec['id']}/import").status_code == 200
+    after = admin.get("/api/imports/accuracy").json()
+    assert after["records"] == before["records"] + 1
+    by = {f["field"]: f for f in after["fields"]}
+    assert by["name"]["corrected"] >= 1 and by["email"]["missed"] >= 1 and by["id_no"]["kept"] >= 1
+    assert after["overall"] is not None and 0 < after["overall"] < 1
+
+
+def test_the_reader_is_retried_once_after_a_server_error(staff, monkeypatch):
+    from app import ocr_client, settings as S
+    monkeypatch.setattr(ocr_client.time, "sleep", lambda s: None)
+    monkeypatch.setattr(S, "OCR_API_KEY", "k")
+    calls = []
+
+    class Rsp:
+        def __init__(self, code): self.status_code = code
+        def raise_for_status(self): pass
+        def json(self): return {"lines": [{"text": "Full Name: Retry Person", "confidence": 0.9, "bbox": [60, 100, 300, 30]}]}
+    def flaky(*a, **k):
+        calls.append(1)
+        if len(calls) == 1:
+            raise ocr_client.requests.ConnectionError("reader restarting")
+        return Rsp(200)
+    monkeypatch.setattr(ocr_client.requests, "post", flaky)
+    rec = _scan(staff("nairobi.sports@sports.example.ke"))
+    assert len(calls) == 2 and rec["readerOn"] and rec["fields"]["name"] == "Retry Person"

@@ -16,7 +16,9 @@ interface Suggestion { value: string; confidence: number; script: string }
 interface Rec {
   id: string; docType: "player" | "club"; status: string; fileName: string; mime: string; fields: Record<string, string>;
   cleaned: Record<string, string>; warnings: string[]; suggestions: Record<string, Suggestion>; reader: string; readerOn: boolean;
-  applicationId: string | null; note: string; createdAt: string; scanDeleted: boolean; scanDeletedAt: string;
+  applicationId: string | null; note: string; createdAt: string;
+  flags: Record<string, string>; quality: { ok: boolean; issues: string[]; sharpness: number | null } | null;
+  duplicateOf: { id: string; status: string; createdAt: string; fileName: string } | null; pageCount: number;
 }
 
 type Spec = { key: string; label: string; kind?: "text" | "select" | "sport" | "level"; options?: string[]; hint?: string; wide?: boolean };
@@ -40,6 +42,10 @@ export default function Page() {
   const [docType, setDocType] = useState<"player" | "club">("player");
   const [busy, setBusy] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [oneForm, setOneForm] = useState(false);
+  const [progress, setProgress] = useState("");
+  const [page, setPage] = useState(1);
+  const [acc, setAcc] = useState<{ records: number; overall: number | null; fields: { field: string; kept: number; corrected: number; missed: number; total: number; accuracy: number | null }[] } | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [warnings, setWarnings] = useState<string[]>([]);
   const [zoom, setZoom] = useState(1);
@@ -66,7 +72,7 @@ export default function Page() {
     if (!rec || !confirm("TESTING: delete this paper record completely?\n\nThis removes the scan, the record, and the registration made from it, so you can scan the same document again. It cannot be undone.")) return;
     setBusy("purge");
     try {
-      await api(`/imports/${rec.id}`, "DELETE");
+      await api(`/imports/${rec.id}?registration=true`, "DELETE");
       setSel(null);
       await load();
       notify("Everything about this record is gone. You can scan the same document again.", "ok", "Deleted completely");
@@ -77,12 +83,13 @@ export default function Page() {
     }
   };
   const deleteScan = async () => {
-    if (!rec || !confirm("Delete this scan from the server? The information you approved stays in the registry, but the image cannot be recovered.")) return;
+    if (!rec || !confirm(rec.status === "Imported" ? "Delete this paper record and its scan? The registration made from it stays in the registry. The image cannot be recovered." : "Delete this paper record and its scan? It cannot be recovered.")) return;
     setBusy("delete");
     try {
-      await api(`/imports/${rec.id}/scan`, "DELETE");
+      await api(`/imports/${rec.id}`, "DELETE");
+      setSel(null);
       await load();
-      notify("The image was removed from the server.", "ok", "Scan deleted");
+      notify("The scan and the record are gone from the server.", "ok", "Deleted");
     } catch (x) {
       notify(errText(x), "error", "Could not delete the scan");
     } finally {
@@ -101,8 +108,11 @@ export default function Page() {
   };
   useEffect(() => {
     let off = false;
-    api<{ configured: boolean; ok: boolean; message: string }>("/imports/reader/status").then((r) => !off && setReader(r)).catch(() => {});
-    return () => { off = true; };
+    const check = () => api<{ configured: boolean; ok: boolean; message: string }>("/imports/reader/status").then((r) => !off && setReader(r)).catch(() => {});
+    check();
+    const t = setInterval(check, 60_000); // notice when the reader goes down or comes back
+    api<typeof acc>("/imports/accuracy").then((r) => !off && setAcc(r)).catch(() => {});
+    return () => { off = true; clearInterval(t); };
   }, []);
 
   const load = useCallback(async () => {
@@ -117,7 +127,7 @@ export default function Page() {
   }, []);
 
   const rec = rows?.find((r) => r.id === sel) ?? null;
-  const open = (r: Rec) => { setSel(r.id); setDraft(r.fields); setWarnings(r.warnings); setZoom(1); setTurn(0); };
+  const open = (r: Rec) => { setSel(r.id); setDraft(r.fields); setWarnings(r.warnings); setZoom(1); setTurn(0); setPage(1); };
   const shown = useMemo(() => (rows ?? []).filter((r) => r.status === filter), [rows, filter]);
 
   if (!can("applications.review")) return <NoAccess need="applications.review" />;
@@ -132,11 +142,13 @@ export default function Page() {
     setBusy("upload");
     let auto = 0, check = 0, failed = 0;
     let firstPending: string | null = null;
-    for (const f of files) {
+    for (const [i, f] of files.entries()) {
+      setProgress(`Reading ${i + 1} of ${files.length}: ${f.name}`);
       try {
         const fd = new FormData();
         fd.append("doc_type", docType);
         fd.append("file", f);
+        if (oneForm) fd.append("one_form", "1");
         if (scanned) fd.append("scanned", scanned);
         const r = await upload<{ import: Rec; imports?: Rec[]; autoCount?: number }>("/imports", fd);
         // a PDF becomes one paper record per page
@@ -155,6 +167,8 @@ export default function Page() {
     const parts = [auto && `${auto} registered automatically`, check && `${check} need${check === 1 ? "s" : ""} a quick check`, failed && `${failed} failed`].filter(Boolean).join(", ");
     if (auto || check) notify(`${parts}.${auto ? " Registered records still go through normal verification." : ""}`, "ok", files.length === 1 ? "Scan processed" : `${files.length} scans processed`);
     setBusy("");
+    setProgress("");
+    api<typeof acc>("/imports/accuracy").then(setAcc).catch(() => {});
   };
 
   const save = async () => {
@@ -198,21 +212,25 @@ export default function Page() {
 
   const input = (s: Spec) => {
     const sug = rec?.suggestions[s.key];
+    // a flag stays until the officer changes that field
+    const flag = rec && editable && draft[s.key] === (rec.fields[s.key] ?? "") ? rec.flags[s.key] : undefined;
+    const ring = flag ? " !border-gold ring-2 ring-gold/40" : "";
     return (
       <Field key={s.key} label={s.label} hint={s.hint} className={s.wide ? "sm:col-span-2" : undefined}>
         {s.kind === "select" || s.kind === "level" ? (
-          <select className={inputCls} value={draft[s.key] ?? ""} onChange={(e) => set(s.key, e.target.value)} disabled={!editable}>
+          <select className={inputCls + ring} value={draft[s.key] ?? ""} onChange={(e) => set(s.key, e.target.value)} disabled={!editable}>
             <option value="">Select</option>
             {(s.kind === "level" ? [...COMPETITION_LEVELS] : s.options ?? []).map((o) => <option key={o}>{o}</option>)}
           </select>
         ) : s.kind === "sport" ? (
-          <select className={inputCls} value={SPORTS.find((x) => x.id === draft.sport || x.name.toLowerCase() === (draft.sport ?? "").toLowerCase())?.id ?? draft.sport ?? ""} onChange={(e) => set(s.key, e.target.value)} disabled={!editable}>
+          <select className={inputCls + ring} value={SPORTS.find((x) => x.id === draft.sport || x.name.toLowerCase() === (draft.sport ?? "").toLowerCase())?.id ?? draft.sport ?? ""} onChange={(e) => set(s.key, e.target.value)} disabled={!editable}>
             <option value="">Select a sport</option>
             {SPORTS.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
           </select>
         ) : (
-          <input className={inputCls} value={draft[s.key] ?? ""} onChange={(e) => set(s.key, e.target.value)} disabled={!editable} />
+          <input className={inputCls + ring} value={draft[s.key] ?? ""} onChange={(e) => set(s.key, e.target.value)} disabled={!editable} />
         )}
+        {flag && <p className="mt-1 text-[11.5px] font-semibold text-[#9a6b00]">⚠ {flag}</p>}
         {sug?.value && sug.value !== draft[s.key] && editable && (
           <button type="button" onClick={() => set(s.key, sug.value)} className={`mt-1.5 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11.5px] font-semibold ${sug.confidence < 0.7 ? "bg-gold-soft text-forest-900" : "bg-forest-100 text-forest-800"}`}>
             Reader: “{sug.value}” ({Math.round(sug.confidence * 100)}%{sug.script === "handwritten" ? ", handwriting" : ""}) · use
@@ -245,6 +263,11 @@ export default function Page() {
           <Camera size={16} /> Take a photo
           <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={pick} />
         </label>
+        <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-semibold text-ink-2">
+          <input type="checkbox" className="h-4 w-4 accent-forest-700" checked={oneForm} onChange={(e) => setOneForm(e.target.checked)} />
+          A PDF with several pages is one form
+        </label>
+        {progress && <p role="status" className="flex w-full items-center gap-2 text-xs font-semibold text-forest-800"><ButtonSpinner /> {progress}</p>}
         <p className="text-xs text-ink-3">Choose one or many files (JPG, PNG, WebP or PDF, up to 12 MB each, one form per file). The fields are read from each scan; you check them beside the image and press Approve. Scans are private.</p>
         {rule && (
           <button type="button" onClick={toggleRule} disabled={!can("settings.manage")} aria-pressed={rule.auto} title={can("settings.manage") ? "Switch automatic registration on or off" : "Only an administrator can change this"} className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${rule.auto ? "bg-leaf/15 text-leaf" : "bg-bone text-ink-2"}`}>
@@ -254,7 +277,7 @@ export default function Page() {
         )}
         {rule && (
           <label className="inline-flex items-center gap-2 text-xs font-semibold text-ink-2">
-            Delete scans after
+            Finished records disappear after
             <select className="rounded-md border border-line bg-white px-2 py-1.5 text-xs font-bold" value={rule.retentionDays} disabled={!can("settings.manage")} onChange={(e) => setRetention(Number(e.target.value))} aria-label="Scan retention">
               <option value={7}>7 days</option><option value={14}>14 days</option><option value={30}>30 days</option><option value={90}>90 days</option><option value={0}>never</option>
             </select>
@@ -274,6 +297,28 @@ export default function Page() {
           </button>
         ))}
       </div>
+
+      {acc && acc.records > 0 && (
+        <details className="mb-4 rounded-2xl border border-line bg-white p-4">
+          <summary className="cursor-pointer text-sm font-bold text-forest-900">
+            Reader accuracy: {acc.overall === null ? "no data yet" : `${Math.round(acc.overall * 100)}% of fields needed no correction`} <span className="font-normal text-ink-3">({acc.records} approved records)</span>
+          </summary>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[420px] text-left text-sm">
+              <thead><tr className="border-b border-line text-xs uppercase tracking-wider text-ink-3"><th className="py-2 pr-3">Field</th><th className="py-2 pr-3">Kept</th><th className="py-2 pr-3">Corrected</th><th className="py-2 pr-3">Missed</th><th className="py-2">Right first time</th></tr></thead>
+              <tbody>
+                {acc.fields.map((f) => (
+                  <tr key={f.field} className="border-b border-line/60">
+                    <td className="py-2 pr-3 font-semibold">{f.field.replaceAll("_", " ")}</td><td className="py-2 pr-3">{f.kept}</td><td className="py-2 pr-3">{f.corrected}</td><td className="py-2 pr-3">{f.missed}</td>
+                    <td className="py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-bold ${(f.accuracy ?? 0) >= 0.9 ? "bg-leaf/15 text-leaf" : (f.accuracy ?? 0) >= 0.7 ? "bg-gold-soft text-forest-900" : "bg-red-50 text-kenya-red"}`}>{f.accuracy === null ? "n/a" : `${Math.round(f.accuracy * 100)}%`}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-2 text-xs text-ink-3">Weakest fields come first. A field the reader missed is one the officer had to type. This tells you where to improve the form or the reader.</p>
+          </div>
+        </details>
+      )}
 
       {!rows ? <BlockLoader label="Loading paper records" /> : (
         <div className="grid items-start gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
@@ -298,12 +343,10 @@ export default function Page() {
                   {rule?.testDelete && can("settings.manage") && (
                     <button onClick={deleteCompletely} disabled={busy === "purge"} title="Testing only: delete the scan, the record and the registration made from it" className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-kenya-red px-2.5 text-xs font-bold text-white hover:brightness-110 disabled:opacity-60"><Trash2 size={14} /> Delete completely</button>
                   )}
-                  {!rec.scanDeleted && (
-                    <div className="flex gap-1.5">
-                      <button onClick={deleteScan} disabled={busy === "delete"} aria-label="Delete scan" title="Delete this scan from the server" className="grid h-8 w-8 place-items-center rounded-lg border border-line text-kenya-red hover:bg-red-50 disabled:opacity-60"><Trash2 size={15} /></button>
-                    </div>
-                  )}
-                  {rec.mime.startsWith("image/") && !rec.scanDeleted && (
+                  <div className="flex gap-1.5">
+                    <button onClick={deleteScan} disabled={busy === "delete"} aria-label="Delete this paper record and its scan" title="Delete the scan and the record" className="grid h-8 w-8 place-items-center rounded-lg border border-line text-kenya-red hover:bg-red-50 disabled:opacity-60"><Trash2 size={15} /></button>
+                  </div>
+                  {rec.mime.startsWith("image/") && (
                     <div className="flex gap-1.5">
                       <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} aria-label="Zoom out" className="grid h-8 w-8 place-items-center rounded-lg border border-line hover:bg-bone"><ZoomOut size={15} /></button>
                       <button onClick={() => setZoom((z) => Math.min(3, z + 0.25))} aria-label="Zoom in" className="grid h-8 w-8 place-items-center rounded-lg border border-line hover:bg-bone"><ZoomIn size={15} /></button>
@@ -311,19 +354,35 @@ export default function Page() {
                     </div>
                   )}
                 </div>
+                {rec.pageCount > 1 && (
+                  <div className="mb-2 flex flex-wrap gap-1.5" role="tablist" aria-label="Pages of this form">
+                    {Array.from({ length: rec.pageCount }, (_, n) => n + 1).map((n) => (
+                      <button key={n} role="tab" aria-selected={page === n} onClick={() => setPage(n)} className={`rounded-lg px-3 py-1.5 text-xs font-bold ${page === n ? "bg-forest-800 text-white" : "bg-bone text-ink-2 hover:bg-forest-100"}`}>Page {n}</button>
+                    ))}
+                  </div>
+                )}
                 <div className="max-h-[72vh] overflow-auto rounded-xl bg-bone">
-                  {rec.scanDeleted ? (
-                    <p className="grid min-h-[260px] place-items-center p-6 text-center text-sm font-semibold text-ink-3">This scan was deleted{rec.scanDeletedAt ? ` on ${new Date(rec.scanDeletedAt).toLocaleDateString("en-KE")}` : ""}. The registration keeps the approved information.</p>
-                  ) : rec.mime === "application/pdf" ? (
+                  {rec.mime === "application/pdf" ? (
                     <iframe title="Scanned form" src={`/api/imports/${rec.id}/image`} className="h-[70vh] w-full" />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={`/api/imports/${rec.id}/image`} alt="Scanned paper form" style={{ width: `${zoom * 100}%`, transform: `rotate(${turn}deg)`, transformOrigin: "center" }} className="max-w-none" />
+                    <img src={`/api/imports/${rec.id}/image?page=${page}`} alt={`Scanned paper form, page ${page}`} style={{ width: `${zoom * 100}%`, transform: `rotate(${turn}deg)`, transformOrigin: "center" }} className="max-w-none" />
                   )}
                 </div>
               </section>
 
               <section className="min-w-0 rounded-2xl border border-line bg-white p-5">
+                {rec.status === "Pending" && rec.quality && !rec.quality.ok && (
+                  <div role="alert" className="mb-3 rounded-lg border border-gold bg-gold-soft p-3 text-[13px] text-forest-900">
+                    <p className="font-bold">This image may be hard to read. Retaking it will give better results.</p>
+                    <ul className="mt-1 list-disc pl-5">{rec.quality.issues.map((i) => <li key={i}>{i}</li>)}</ul>
+                  </div>
+                )}
+                {rec.status === "Pending" && rec.duplicateOf && (
+                  <p role="alert" className="mb-3 rounded-lg border border-line bg-bone p-3 text-[13px] text-ink-2">
+                    This exact file was uploaded before ({rec.duplicateOf.fileName}, {new Date(rec.duplicateOf.createdAt).toLocaleDateString("en-KE")}, {rec.duplicateOf.status.toLowerCase()}). Check it is not the same form twice.
+                  </p>
+                )}
                 <h2 className="text-base font-bold text-forest-900">Information read from the document</h2>
                 {(() => {
                   const sug = Object.values(rec.suggestions);

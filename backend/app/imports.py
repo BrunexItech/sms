@@ -4,6 +4,7 @@ Nothing in the holding table is a registration. Importing goes through the same 
 (duplicate IDs, valid places, club officials) and the person's record then follows normal verification.
 """
 import difflib
+import hashlib
 import json
 import re
 from datetime import date, datetime, timedelta, timezone
@@ -16,7 +17,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import ocr_client
+from . import ocr_client, ocr_stats, scan_quality
 from . import refdata as R
 from . import settings as C
 from .api import MEDIA_DIR, In, PlaceIn, RegisterIn, app_out, err, hist, log, need_user, new_app, now, place_or_422, sniff
@@ -41,28 +42,28 @@ def auto_rule(db: Session) -> dict:
     return {"auto": False, "minConfidence": 0.85, "retentionDays": 30, **(row.value if row else {}), "testDelete": C.ALLOW_IMPORT_TEST_DELETE}
 
 
-def erase_scan(r: LegacyImport) -> bool:
-    """Delete the image file and mark the record. The extracted values stay only where an officer imported them."""
-    gone = False
-    if r.path:
-        try:
-            Path(r.path).unlink(missing_ok=True)
-            gone = True
-        except OSError:
-            return False
-    r.path, r.scan_deleted_at, r.updated_at = "", now(), now()
-    return gone or True
+def erase_files(r: LegacyImport) -> None:
+    """Remove every image file of a paper record (the first page and any further pages)."""
+    for path in [r.path, *((r.ocr or {}).get("pages") or [])]:
+        if path:
+            try:
+                Path(path).unlink(missing_ok=True)
+            except OSError:
+                pass
+    r.path = ""
 
 
 def purge_scans(db: Session) -> int:
-    """Daily clean-up: remove scans of closed records older than the retention period."""
+    """Daily clean-up: finished (imported or set-aside) paper records older than the retention period disappear completely,
+    scan and record. The registration they created stays; the audit log keeps the history. Pending records are never touched."""
     days = int(auto_rule(db)["retentionDays"])
     if days <= 0:
         return 0
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat(timespec="seconds")
-    rows = db.scalars(select(LegacyImport).where(LegacyImport.status != "Pending", LegacyImport.path != "", LegacyImport.updated_at < cutoff)).all()
+    rows = db.scalars(select(LegacyImport).where(LegacyImport.status != "Pending", LegacyImport.updated_at < cutoff)).all()
     for r in rows:
-        erase_scan(r)
+        erase_files(r)
+        db.delete(r)
     db.commit()
     return len(rows)
 
@@ -291,12 +292,51 @@ def get_import(db: Session, u: User, iid: str) -> LegacyImport:
     return r
 
 
+def suspects(doc_type: str, raw: dict, suggestions: dict, warnings: list[str]) -> dict[str, str]:
+    """Fields an officer should look at first. The reader gives every field the same confidence, so we judge the values themselves."""
+    out: dict[str, str] = {}
+    f, _w, place = clean(doc_type, raw)
+    for k, v in f.items():
+        if not v:
+            continue
+        sug = suggestions.get(k) or {}
+        if sug.get("confidence") is not None and 0 < float(sug["confidence"]) < 0.7:
+            out[k] = "The reader was unsure about this one."
+    name = f.get("name", "")
+    if name and (any(c.isdigit() for c in name) or " " not in name or len(name) < 4):
+        out["name"] = "Check the spelling and the spaces between the names."
+    if f.get("id_no") and not norm_id(f["id_no"]):
+        out["id_no"] = "This does not look like an ID or passport number."
+    for k in ("phone", "guardian_phone", "chair_phone", "secretary_phone", "treasurer_phone"):
+        if f.get(k) and not norm_phone(f[k]):
+            out[k] = "This does not look like a Kenyan phone number."
+    if f.get("dob"):
+        d = norm_date(f["dob"])
+        if not d or not (1925 <= int(d[:4]) <= date.today().year - 3):
+            out["dob"] = "Check the date of birth."
+    if f.get("kra") and not norm_kra(f["kra"]):
+        out["kra"] = "A KRA PIN looks like A123456789Z."
+    if f.get("email") and not EMAIL_RE.match(f["email"]):
+        out["email"] = "Check the @ in the email address."
+    if f.get("sport") and not sport_id(f["sport"]):
+        out["sport"] = "The sport was not recognised."
+    if f.get("county") and not place["countyId"]:
+        out["county"] = "The county was not recognised."
+    if place["countyId"] and f.get("sub_county") and not place["subId"]:
+        out["sub_county"] = "The sub-county was not recognised."
+    if place["subId"] and f.get("ward") and not place["wardId"]:
+        out["ward"] = "The ward was not recognised."
+    return out
+
+
 def out(r: LegacyImport) -> dict:
     fields, warnings, place = clean(r.doc_type, r.fields or {})
+    o = r.ocr or {}
     return {"id": r.id, "docType": r.doc_type, "status": r.status, "fileName": r.file_name, "mime": r.mime, "size": r.size,
             "fields": r.fields or {}, "cleaned": fields, "warnings": warnings, "place": place,
-            "suggestions": (r.ocr or {}).get("fields", {}), "reader": (r.ocr or {}).get("message", ""), "readerOn": bool((r.ocr or {}).get("available")),
-            "scanDeleted": bool(r.scan_deleted_at), "scanDeletedAt": r.scan_deleted_at,
+            "flags": suspects(r.doc_type, r.fields or {}, o.get("fields", {}), warnings) if r.status == "Pending" else {},
+            "suggestions": o.get("fields", {}), "reader": o.get("message", ""), "readerOn": bool(o.get("available")),
+            "quality": o.get("quality"), "duplicateOf": o.get("duplicate"), "pageCount": 1 + len(o.get("pages") or []),
             "applicationId": r.application_id, "note": r.note, "createdAt": r.created_at, "updatedAt": r.updated_at}
 
 
@@ -386,8 +426,17 @@ def list_imports(status: str = "", db: Session = Depends(get_db), u: User = Depe
     return {"imports": [out(r) for r in rows if mine(r, u) and (not status or r.status == status)]}
 
 
+def _merge(first: dict, more: dict) -> dict:
+    """Fields read from a later page fill the gaps left by earlier pages; a value already read is never replaced."""
+    out = {k: dict(v) for k, v in first.items()}
+    for k, v in more.items():
+        if k not in out or not str(out[k].get("value", "")).strip():
+            out[k] = v
+    return out
+
+
 @router.post("", status_code=201)
-async def upload(doc_type: str = Form(...), file: UploadFile = File(...), scanned: str = Form(""),
+async def upload(doc_type: str = Form(...), file: UploadFile = File(...), scanned: str = Form(""), one_form: str = Form(""),
                  db: Session = Depends(get_db), u: User = Depends(staff_user)):
     if doc_type not in DOC_TYPES:
         err(422, "Choose the type of paper form: player or club.")
@@ -400,24 +449,34 @@ async def upload(doc_type: str = Form(...), file: UploadFile = File(...), scanne
     pages = [(data, found[1], (file.filename or "scan")[:120])]
     if found[1] == "application/pdf" and not scanned:
         imgs = pdf_pages(data)
-        if imgs:  # one paper record per page: a page is one form
+        if imgs:
             base = (file.filename or "scan").rsplit(".", 1)[0][:100]
             pages = [(img, "image/png", f"{base} (page {n}).png" if len(imgs) > 1 else f"{base}.png") for n, img in enumerate(imgs, 1)]
     made, auto = [], None
-    for pdata, pmime, pname in pages:
-        rec, a = _make_record(db, u, doc_type, pdata, pmime, pname, scanned)
-        made.append(rec)
-        auto = auto or a
+    if one_form and len(pages) > 1:  # one form that runs over several pages: a single record, fields merged across the pages
+        first, *rest = pages
+        rec, a = _make_record(db, u, doc_type, *first, scanned, extra=rest)
+        made, auto = [rec], a
+    else:  # every page, or every file, is its own form
+        for pdata, pmime, pname in pages:
+            rec, a = _make_record(db, u, doc_type, pdata, pmime, pname, scanned)
+            made.append(rec)
+            auto = auto or a
     db.commit()
     return {"import": out(made[0]), "imports": [out(r) for r in made], "autoImported": bool(auto), "applicationId": auto.id if auto else None,
             "autoCount": sum(1 for r in made if r.status == "Imported")}
 
 
-def _make_record(db: Session, u: User, doc_type: str, data: bytes, mime: str, name: str, scanned: str):
-    iid = uuid4().hex
+def _store(data: bytes) -> str:
     MEDIA_DIR.mkdir(parents=True, exist_ok=True)
-    path = MEDIA_DIR / f"import-{iid}"
+    path = MEDIA_DIR / f"import-{uuid4().hex}"
     path.write_bytes(data)
+    return str(path)
+
+
+def _make_record(db: Session, u: User, doc_type: str, data: bytes, mime: str, name: str, scanned: str, extra: list | None = None):
+    iid = uuid4().hex
+    path = _store(data)
     if scanned:  # the reader's own scanner already read the page: use its fields
         try:
             fields = ocr_client.map_scanner_fields(json.loads(scanned))
@@ -426,8 +485,21 @@ def _make_record(db: Session, u: User, doc_type: str, data: bytes, mime: str, na
         sug = {"available": bool(fields), "fields": fields, "message": "" if fields else "The scanner found no fields on this page. Enter them by hand."}
     else:
         sug = ocr_client.prefill(doc_type, data, name, mime)
+    pages = []
+    for pdata, pmime, pname in (extra or []):
+        pages.append(_store(pdata))
+        more = ocr_client.prefill(doc_type, pdata, pname, pmime)
+        if more["available"]:
+            sug = {"available": True, "fields": _merge(sug["fields"], more["fields"]), "message": ""}
+    if pages:
+        sug["pages"] = pages
+    sug["quality"] = scan_quality.assess(data) if mime.startswith("image/") else None
+    sha = hashlib.sha256(data).hexdigest()
+    twin = db.scalars(select(LegacyImport).where(LegacyImport.sha256 == sha).order_by(LegacyImport.created_at)).first()
+    if twin:
+        sug["duplicate"] = {"id": twin.id, "status": twin.status, "createdAt": twin.created_at, "fileName": twin.file_name}
     t = now()
-    r = LegacyImport(id=iid, doc_type=doc_type, file_name=name, mime=mime, size=len(data), path=str(path),
+    r = LegacyImport(id=iid, doc_type=doc_type, file_name=name, mime=mime, size=len(data), path=path, sha256=sha,
                      fields=clean(doc_type, {k: v["value"] for k, v in sug["fields"].items()})[0], ocr=sug, created_by=u.id, created_at=t, updated_at=t)
     db.add(r)
     log(db, u, "Uploaded a paper record", iid)
@@ -462,55 +534,50 @@ def get_rule(db: Session = Depends(get_db), u: User = Depends(staff_user)):
     return auto_rule(db)
 
 
+@router.get("/accuracy")
+def accuracy(db: Session = Depends(get_db), u: User = Depends(staff_user)):
+    return ocr_stats.report(db)
+
+
 @router.get("/{iid}")
 def one(iid: str, db: Session = Depends(get_db), u: User = Depends(staff_user)):
     return {"import": out(get_import(db, u, iid))}
 
 
 @router.delete("/{iid}")
-def delete_completely(iid: str, db: Session = Depends(get_db), u: User = Depends(need_user)):
-    """TESTING ONLY (ALLOW_IMPORT_TEST_DELETE=1): remove the scan, the paper record and the registration it created."""
-    if not C.ALLOW_IMPORT_TEST_DELETE:
-        err(403, "Complete deletion is switched off on this server.")
-    if not can(u, "settings.manage"):
-        err(403, "Only an administrator can delete a paper record completely.")
-    r = db.get(LegacyImport, iid)
-    if not r:
-        err(404, "Paper record not found.")
+def delete_record(iid: str, registration: bool = False, db: Session = Depends(get_db), u: User = Depends(staff_user)):
+    """Delete a paper record completely: the scan and the record both disappear, nothing is left in the list.
+    A registration already made from it stays (it is real registry data) unless an administrator, on a server where
+    ALLOW_IMPORT_TEST_DELETE=1 is switched on for testing, asks for it to go too."""
+    r = get_import(db, u, iid)
     if r.application_id:
         a = db.get(Application, r.application_id)
         if a:
-            if not a.legacy or a.status == "Approved":
-                err(409, "The registration made from this record is already verified, so it cannot be deleted here.")
-            db.delete(a)
-    erase_scan(r)
-    log(db, u, "Deleted a paper record completely (testing)", iid)
+            if registration:
+                if not C.ALLOW_IMPORT_TEST_DELETE:
+                    err(403, "Deleting the registration too is switched off on this server.")
+                if not can(u, "settings.manage"):
+                    err(403, "Only an administrator can delete the registration as well.")
+                if not a.legacy or a.status == "Approved":
+                    err(409, "The registration made from this record is already verified, so it cannot be deleted here.")
+                db.delete(a)
+            else:
+                a.history = [*a.history, hist(u, "Scan of the paper record deleted")]
+    erase_files(r)
+    log(db, u, "Deleted a paper record" + (" and its registration (testing)" if registration else ""), iid)
     db.delete(r)
     db.commit()
     return {"deleted": iid}
 
 
-@router.delete("/{iid}/scan")
-def delete_scan(iid: str, db: Session = Depends(get_db), u: User = Depends(staff_user)):
-    r = get_import(db, u, iid)
-    if not r.path and r.scan_deleted_at:
-        err(409, "The scan is already deleted.")
-    erase_scan(r)
-    if r.application_id:
-        a = db.get(Application, r.application_id)
-        if a:
-            a.history = [*a.history, hist(u, "Scan of the paper record deleted")]
-    log(db, u, "Deleted the scan of a paper record", r.id)
-    db.commit()
-    return {"import": out(r)}
-
-
 @router.get("/{iid}/image")
-def image(iid: str, db: Session = Depends(get_db), u: User = Depends(staff_user)):
+def image(iid: str, page: int = 1, db: Session = Depends(get_db), u: User = Depends(staff_user)):
     r = get_import(db, u, iid)
-    if not r.path or not Path(r.path).exists():
-        err(410, "The scan was deleted.")
-    return FileResponse(r.path, media_type=r.mime, headers={"Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff"})
+    paths = [r.path, *((r.ocr or {}).get("pages") or [])]
+    path = paths[page - 1] if 1 <= page <= len(paths) else ""
+    if not path or not Path(path).exists():
+        err(410, "The scan is no longer on the server.")
+    return FileResponse(path, media_type=r.mime, headers={"Cache-Control": "private, max-age=300", "X-Content-Type-Options": "nosniff"})
 
 
 class FieldsIn(In):
@@ -576,6 +643,9 @@ def do_import(db: Session, u: User, r: LegacyImport, how: str = "") -> Applicati
                                   f"Scan {r.file_name}" + (f", old certificate {a.legacy_cert_no}" if a.legacy_cert_no else ""))]
     r.status, r.application_id, r.updated_at = "Imported", a.id, now()
     r.note = how
+    sugg = {k: v.get("value", "") for k, v in ((r.ocr or {}).get("fields") or {}).items()}
+    if sugg:  # measure the reader: which values did the officer keep, correct or have to add?
+        ocr_stats.record(db, r.doc_type, ocr_stats.outcomes(clean(r.doc_type, sugg)[0], f))
     log(db, u, "Imported a paper record" + (f" ({how})" if how else ""), a.id)
     return a
 

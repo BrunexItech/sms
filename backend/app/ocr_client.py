@@ -15,6 +15,23 @@ from . import settings as C
 TEMPLATES = Path(__file__).resolve().parent.parent / "data" / "import_templates.json"
 
 
+def _post(url: str, **kw):
+    """requests.post with one retry after a connection error or a 5xx answer (the reader runs on a small server)."""
+    last: Exception | None = None
+    for attempt in range(2):
+        try:
+            r = requests.post(url, **kw)
+            if r.status_code >= 500 and attempt == 0:
+                time.sleep(1.5)
+                continue
+            return r
+        except requests.RequestException as e:
+            last = e
+            if attempt == 0:
+                time.sleep(1.5)
+    raise last or requests.RequestException("no answer")
+
+
 def zones_for(doc_type: str) -> list[dict]:
     try:
         return json.loads(TEMPLATES.read_text()).get(doc_type, {}).get("zones", [])
@@ -70,7 +87,7 @@ def embed_token(fresh: bool = False) -> str | None:
     if not fresh and _TOKEN["v"] and time.time() < _TOKEN["exp"]:
         return _TOKEN["v"]
     try:
-        r = requests.post(f"{C.OCR_URL}/api/embed/token", headers={"X-API-Key": C.OCR_API_KEY}, timeout=15)
+        r = _post(f"{C.OCR_URL}/api/embed/token", headers={"X-API-Key": C.OCR_API_KEY}, timeout=15)
         r.raise_for_status()
         j = r.json()
     except (requests.RequestException, ValueError):
@@ -83,7 +100,7 @@ def embed_token(fresh: bool = False) -> str | None:
 def read_by_type(doc_type: str, image: bytes, file_name: str, mime: str, type_id: str) -> dict:
     """The reader's schema extraction: it knows our form's fields (type_id) and returns key, value, confidence for each."""
     def call(token: str):
-        return requests.post(f"{C.OCR_URL}/api/embed/extract", headers={"X-Embed-Token": token},
+        return _post(f"{C.OCR_URL}/api/embed/extract", headers={"X-Embed-Token": token},
                              files={"file": (file_name, image, mime)}, data={"kind": "document", "type_id": type_id}, timeout=120)
     try:
         tok = embed_token()
@@ -118,7 +135,7 @@ def status() -> dict:
 def read_by_labels(doc_type: str, image: bytes, file_name: str, mime: str) -> dict:
     """No template for this layout: read all the text, then take each value from its printed label."""
     try:
-        r = requests.post(f"{C.OCR_URL}/api/documents/ocr-text", headers={"X-API-Key": C.OCR_API_KEY},
+        r = _post(f"{C.OCR_URL}/api/documents/ocr-text", headers={"X-API-Key": C.OCR_API_KEY},
                           files={"file": (file_name, image, mime)}, timeout=90)
         if r.status_code in (404, 405, 501):
             return {"available": False, "fields": {}, "message": "The reader cannot read whole pages yet. Enter the fields by hand."}
@@ -144,7 +161,7 @@ def prefill(doc_type: str, image: bytes, file_name: str, mime: str) -> dict:
     if not zones:
         return read_by_labels(doc_type, image, file_name, mime)
     try:
-        r = requests.post(f"{C.OCR_URL}/api/documents/ocr-zones", headers={"X-API-Key": C.OCR_API_KEY},
+        r = _post(f"{C.OCR_URL}/api/documents/ocr-zones", headers={"X-API-Key": C.OCR_API_KEY},
                           files={"file": (file_name, image, mime)}, data={"zones": json.dumps({"zones": zones})}, timeout=90)
         r.raise_for_status()
         out = r.json()
