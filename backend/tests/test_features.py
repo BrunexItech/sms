@@ -1034,3 +1034,16 @@ def test_the_reader_is_retried_once_after_a_server_error(staff, monkeypatch):
     monkeypatch.setattr(ocr_client.requests, "post", flaky)
     rec = _scan(staff("nairobi.sports@sports.example.ke"))
     assert len(calls) == 2 and rec["readerOn"] and rec["fields"]["name"] == "Retry Person"
+
+
+def test_empty_schema_read_falls_back_to_label_reading(monkeypatch):
+    from app import ocr_client as oc
+    class R:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return {"fields": [{"key": "full_name", "value": ""}]}
+    monkeypatch.setattr(oc, "embed_token", lambda fresh=False: "t")
+    monkeypatch.setattr(oc, "_post", lambda *a, **k: R())
+    monkeypatch.setattr(oc, "read_by_labels", lambda *a, **k: {"available": True, "fields": {"name": {"value": "X"}}, "message": ""})
+    out = oc.read_by_type("player", b"x", "a.png", "image/png", "tid")
+    assert out["fields"]["name"]["value"] == "X"

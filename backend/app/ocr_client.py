@@ -4,6 +4,7 @@ It only ever *suggests* values. Every field is checked by an officer before anyt
 and any failure here simply means the officer types the form in by hand.
 """
 import json
+import logging
 import time
 from pathlib import Path
 
@@ -76,6 +77,7 @@ def map_scanner_fields(raw) -> dict:
         out[ours] = {"value": str(v).strip(), "confidence": round(conf, 3), "script": "printed", "bbox": None}
     return out
 
+log = logging.getLogger(__name__)
 
 _TOKEN: dict = {"v": None, "exp": 0.0}
 
@@ -111,9 +113,13 @@ def read_by_type(doc_type: str, image: bytes, file_name: str, mime: str, type_id
             tok = embed_token(fresh=True)
             r = call(tok) if tok else r
         r.raise_for_status()
-        fields = map_scanner_fields(r.json().get("fields", []))
+        body = r.json()
+        fields = map_scanner_fields(body.get("fields", []))
     except (requests.RequestException, ValueError) as e:
         return {"available": False, "fields": {}, "message": f"The reader could not read this page ({type(e).__name__}). Enter the fields by hand."}
+    if not fields:  # the schema pass found nothing: read the whole page and take values from the printed labels
+        log.warning("reader extract returned no usable fields; keys=%s; falling back to label reading", sorted(str(k) for k in body)[:10] if isinstance(body, dict) else type(body).__name__)
+        return read_by_labels(doc_type, image, file_name, mime)
     return {"available": bool(fields), "fields": fields,
             "message": "" if fields else "The reader found no labelled fields on this scan. Enter them by hand."}
 
