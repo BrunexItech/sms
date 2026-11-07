@@ -1047,3 +1047,9 @@ def test_empty_schema_read_falls_back_to_label_reading(monkeypatch):
     monkeypatch.setattr(oc, "read_by_labels", lambda *a, **k: {"available": True, "fields": {"name": {"value": "X"}}, "message": ""})
     out = oc.read_by_type("player", b"x", "a.png", "image/png", "tid")
     assert out["fields"]["name"]["value"] == "X"
+
+
+def test_reader_polygon_boxes_become_rectangles():
+    from app.ocr_client import _box
+    assert _box([[80, 150], [520, 150], [520, 180], [80, 180]]) == [80, 150, 440, 30]
+    assert _box([1, 2, 3, 4]) == [1, 2, 3, 4] and _box(None) == [0, 0, 0, 0]

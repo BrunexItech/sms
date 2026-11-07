@@ -142,6 +142,17 @@ def status() -> dict:
     return {"configured": True, "ok": ok, "message": "Reader connected." if ok else f"The reader answered with an error ({r.status_code})."}
 
 
+def _box(b):
+    """Corner points [[x,y],...] or [x,y,w,h] -> [x,y,w,h]."""
+    try:
+        if b and isinstance(b[0], (list, tuple)):
+            xs, ys = [p[0] for p in b], [p[1] for p in b]
+            return [min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)]
+        return list(b) if b and len(b) == 4 else [0, 0, 0, 0]
+    except (TypeError, IndexError, ValueError):
+        return [0, 0, 0, 0]
+
+
 def read_by_labels(doc_type: str, image: bytes, file_name: str, mime: str) -> dict:
     """No template for this layout: read all the text, then take each value from its printed label."""
     try:
@@ -154,6 +165,7 @@ def read_by_labels(doc_type: str, image: bytes, file_name: str, mime: str) -> di
         lines = r.json().get("lines", [])
     except (requests.RequestException, ValueError) as e:
         return {"available": False, "fields": {}, "message": f"The reader could not be reached ({type(e).__name__}). Enter the fields by hand."}
+    lines = [dict(ln, bbox=_box(ln.get("bbox"))) for ln in lines if isinstance(ln, dict)]
     fields = label_reader.read(doc_type, lines)
     log.warning("reader ocr-text: %d lines, %d labelled fields found", len(lines), len(fields))
     msg = "" if fields else "The reader found no labelled fields on this scan. Enter them by hand."
