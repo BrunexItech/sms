@@ -118,7 +118,11 @@ def read_by_type(doc_type: str, image: bytes, file_name: str, mime: str, type_id
     except (requests.RequestException, ValueError) as e:
         return {"available": False, "fields": {}, "message": f"The reader could not read this page ({type(e).__name__}). Enter the fields by hand."}
     if not fields:  # the schema pass found nothing: read the whole page and take values from the printed labels
-        log.warning("reader extract returned no usable fields; keys=%s; falling back to label reading", sorted(str(k) for k in body)[:10] if isinstance(body, dict) else type(body).__name__)
+        raw = body.get("fields") if isinstance(body, dict) else None
+        names = [(str(x.get("key") or x.get("name")), bool(x.get("value"))) for x in raw if isinstance(x, dict)] if isinstance(raw, list) else (
+            [(str(k), bool(v.get("value") if isinstance(v, dict) else v)) for k, v in raw.items()] if isinstance(raw, dict) else raw)
+        log.warning("reader extract: no usable fields (kind=%s, conf=%s, fields as (name, has_value)=%s); reading the whole page instead",
+                    body.get("detected_kind"), body.get("ocr_confidence"), names)
         return read_by_labels(doc_type, image, file_name, mime)
     return {"available": bool(fields), "fields": fields,
             "message": "" if fields else "The reader found no labelled fields on this scan. Enter them by hand."}
@@ -143,6 +147,7 @@ def read_by_labels(doc_type: str, image: bytes, file_name: str, mime: str) -> di
     try:
         r = _post(f"{C.OCR_URL}/api/documents/ocr-text", headers={"X-API-Key": C.OCR_API_KEY},
                           files={"file": (file_name, image, mime)}, timeout=90)
+        log.warning("reader ocr-text answered %s", r.status_code)
         if r.status_code in (404, 405, 501):
             return {"available": False, "fields": {}, "message": "The reader cannot read whole pages yet. Enter the fields by hand."}
         r.raise_for_status()
@@ -150,6 +155,7 @@ def read_by_labels(doc_type: str, image: bytes, file_name: str, mime: str) -> di
     except (requests.RequestException, ValueError) as e:
         return {"available": False, "fields": {}, "message": f"The reader could not be reached ({type(e).__name__}). Enter the fields by hand."}
     fields = label_reader.read(doc_type, lines)
+    log.warning("reader ocr-text: %d lines, %d labelled fields found", len(lines), len(fields))
     msg = "" if fields else "The reader found no labelled fields on this scan. Enter them by hand."
     return {"available": bool(fields), "fields": fields, "message": msg}
 
