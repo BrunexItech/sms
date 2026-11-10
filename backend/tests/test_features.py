@@ -1053,3 +1053,14 @@ def test_reader_polygon_boxes_become_rectangles():
     from app.ocr_client import _box
     assert _box([[80, 150], [520, 150], [520, 180], [80, 180]]) == [80, 150, 440, 30]
     assert _box([1, 2, 3, 4]) == [1, 2, 3, 4] and _box(None) == [0, 0, 0, 0]
+
+
+def test_big_photos_are_shrunk_for_the_reader_but_small_ones_untouched():
+    import io
+    from PIL import Image
+    from app.ocr_client import shrink
+    big = io.BytesIO(); Image.new("RGB", (4000, 3000), "white").save(big, "PNG")
+    data, mime, name = shrink(big.getvalue(), "image/png", "scan.png")
+    assert mime == "image/jpeg" and name == "scan.jpg" and max(Image.open(io.BytesIO(data)).size) == 2000
+    small = io.BytesIO(); Image.new("RGB", (800, 600), "white").save(small, "PNG")
+    assert shrink(small.getvalue(), "image/png", "s.png")[0] == small.getvalue()

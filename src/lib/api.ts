@@ -56,3 +56,23 @@ export async function api<T>(path: string, method: "GET" | "POST" | "PUT" | "PAT
   }
   return (await res.json()) as T;
 }
+
+/** Upload with real progress: onSent(0..1) while the file travels; resolves when the server has answered. */
+export function uploadWithProgress<T>(path: string, form: FormData, onSent: (fraction: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open("POST", `/api${path}`);
+    x.withCredentials = true;
+    x.upload.onprogress = (e) => e.lengthComputable && onSent(e.loaded / e.total);
+    x.upload.onload = () => onSent(1);
+    x.onerror = () => reject(new ApiError(0, "Cannot reach the server. Check your connection and try again."));
+    x.onload = () => {
+      let body: unknown = null;
+      try { body = JSON.parse(x.responseText); } catch { /* non-JSON */ }
+      if (x.status >= 200 && x.status < 300) return resolve(body as T);
+      const d = (body as { detail?: unknown } | null)?.detail;
+      reject(new ApiError(x.status, typeof d === "string" ? d : `Upload failed (${x.status})`));
+    };
+    x.send(form);
+  });
+}

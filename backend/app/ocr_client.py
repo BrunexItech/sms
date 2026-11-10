@@ -172,6 +172,25 @@ def read_by_labels(doc_type: str, image: bytes, file_name: str, mime: str) -> di
     return {"available": bool(fields), "fields": fields, "message": msg}
 
 
+def shrink(image: bytes, mime: str, file_name: str) -> tuple[bytes, str, str]:
+    """Send the reader no more pixels than it needs: a 12 MB phone photo reads no better than the same page at 2000 px,
+    but it uploads and reads several times slower. The stored scan is never changed."""
+    try:
+        import io
+
+        from PIL import Image, ImageOps
+        im = Image.open(io.BytesIO(image))
+        if max(im.size) <= 2000 and len(image) <= 1_500_000:
+            return image, mime, file_name
+        im = ImageOps.exif_transpose(im).convert("RGB")
+        im.thumbnail((2000, 2000))
+        buf = io.BytesIO()
+        im.save(buf, "JPEG", quality=88)
+        return buf.getvalue(), "image/jpeg", file_name.rsplit(".", 1)[0] + ".jpg"
+    except Exception:
+        return image, mime, file_name
+
+
 def prefill(doc_type: str, image: bytes, file_name: str, mime: str) -> dict:
     """Suggestions per field: {"available": bool, "fields": {key: {value, confidence, script, bbox}}, "message": str}."""
     zones = zones_for(doc_type)
@@ -179,6 +198,7 @@ def prefill(doc_type: str, image: bytes, file_name: str, mime: str) -> dict:
         return {"available": False, "fields": {}, "message": "The reader is not connected. Enter the fields by hand."}
     if not mime.startswith("image/"):
         return {"available": False, "fields": {}, "message": "Automatic reading works on images (JPG, PNG, WebP). Photograph or save the page as an image, or enter the fields by hand."}
+    image, mime, file_name = shrink(image, mime, file_name)
     type_id = C.OCR_TYPE_PLAYER if doc_type == "player" else C.OCR_TYPE_CLUB
     if type_id and not zones:
         return read_by_type(doc_type, image, file_name, mime, type_id)

@@ -353,7 +353,7 @@ def pdf_pages(data: bytes) -> list[bytes]:
         out = []
         for i in range(min(len(pdf), MAX_PDF_PAGES)):
             buf = io.BytesIO()
-            pdf[i].render(scale=2.1).to_pil().convert("RGB").save(buf, "PNG")
+            pdf[i].render(scale=1.8).to_pil().convert("RGB").save(buf, "PNG")
             out.append(buf.getvalue())
         return out
     except Exception:  # a damaged or protected PDF is stored as it is and keyed by hand
@@ -485,12 +485,14 @@ def _make_record(db: Session, u: User, doc_type: str, data: bytes, mime: str, na
         sug = {"available": bool(fields), "fields": fields, "message": "" if fields else "The scanner found no fields on this page. Enter them by hand."}
     else:
         sug = ocr_client.prefill(doc_type, data, name, mime)
-    pages = []
-    for pdata, pmime, pname in (extra or []):
-        pages.append(_store(pdata))
-        more = ocr_client.prefill(doc_type, pdata, pname, pmime)
-        if more["available"]:
-            sug = {"available": True, "fields": _merge(sug["fields"], more["fields"]), "message": ""}
+    pages = [_store(pdata) for pdata, _, _ in (extra or [])]
+    if extra:  # the other pages are read at the same time, then merged in page order
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=min(4, len(extra))) as ex:
+            reads = list(ex.map(lambda x: ocr_client.prefill(doc_type, x[0], x[2], x[1]), extra))
+        for more in reads:
+            if more["available"]:
+                sug = {"available": True, "fields": _merge(sug["fields"], more["fields"]), "message": ""}
     if pages:
         sug["pages"] = pages
     sug["quality"] = scan_quality.assess(data) if mime.startswith("image/") else None

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Camera, Check, FileScan, ScanLine, Trash2, RotateCw, Upload, X, ZoomIn, ZoomOut } from "lucide-react";
-import { api, upload } from "@/lib/api";
+import { api, uploadWithProgress } from "@/lib/api";
 import { SPORTS } from "@/data/sports";
 import { errText, useStore } from "@/lib/store";
 import { COMPETITION_LEVELS } from "@/lib/types";
@@ -35,6 +35,51 @@ const CLUB: Spec[] = [
   { key: "treasurer_name", label: "Treasurer" }, { key: "treasurer_phone", label: "Treasurer phone" }, { key: "certificate_number", label: "Old certificate number" },
 ];
 
+type Job = { name: string; stage: "queued" | "uploading" | "reading" | "done" | "failed"; sent: number; readFrom: number };
+
+const readMs = () => {
+  try { return Math.min(60000, Math.max(3000, Number(localStorage.getItem("readMs")) || 10000)); } catch { return 10000; }
+};
+const rememberReadMs = (ms: number) => {
+  try { localStorage.setItem("readMs", String(Math.round(readMs() * 0.6 + Math.min(60000, ms) * 0.4))); } catch { /* private mode */ }
+};
+/** Upload counts for the first 30%; reading eases towards 97% on the time earlier scans took, and jumps to 100% when the reader answers. */
+const jobPct = (j: Job) => {
+  if (j.stage === "done") return 100;
+  if (j.stage === "failed") return 100;
+  if (j.stage === "queued") return 0;
+  if (j.stage === "uploading") return Math.round(j.sent * 30);
+  const el = Date.now() - j.readFrom;
+  return Math.round(30 + 67 * (1 - Math.exp((-el / readMs()) * 1.8)));
+};
+
+function ReadProgress({ jobs }: { jobs: Job[] }) {
+  const pct = Math.round(jobs.reduce((a, j) => a + jobPct(j), 0) / jobs.length);
+  const done = jobs.filter((j) => j.stage === "done" || j.stage === "failed").length;
+  const phase = (j: Job) => (j.stage === "queued" ? "Waiting" : j.stage === "uploading" ? "Uploading" : j.stage === "reading" ? "Reading the fields" : j.stage === "done" ? "Read" : "Failed");
+  return (
+    <div role="status" aria-live="polite" className="w-full rounded-xl border border-line bg-white p-3">
+      <div className="mb-2 flex items-center justify-between text-xs font-bold text-forest-800">
+        <span>{done === jobs.length ? "All read" : `Reading ${done + 1 > jobs.length ? jobs.length : done + 1} of ${jobs.length}`}</span>
+        <span className="tabular-nums">{pct}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-bone" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-full rounded-full bg-leaf transition-[width] duration-300" style={{ width: `${pct}%` }} />
+      </div>
+      <ul className="mt-2 grid gap-1">
+        {jobs.map((j, i) => (
+          <li key={i} className="flex items-center gap-2 text-[11px] text-ink-2">
+            <span className="min-w-0 flex-1 truncate font-semibold">{j.name}</span>
+            <span className={j.stage === "failed" ? "font-bold text-kenya-red" : j.stage === "done" ? "font-bold text-leaf" : ""}>{phase(j)}</span>
+            <span className="w-9 text-right tabular-nums">{jobPct(j)}%</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-1.5 text-[10px] text-ink-3">The percentage while reading is an estimate from earlier scans; it reaches 100% when the reader answers.</p>
+    </div>
+  );
+}
+
 export default function Page() {
   const { can, notify, admin } = useStore();
   const [rows, setRows] = useState<Rec[] | null>(null);
@@ -43,7 +88,13 @@ export default function Page() {
   const [busy, setBusy] = useState("");
   const [scanning, setScanning] = useState(false);
   const [oneForm, setOneForm] = useState(false);
-  const [progress, setProgress] = useState("");
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!jobs.some((j) => j.stage === "uploading" || j.stage === "reading")) return;
+    const t = setInterval(() => setTick((n) => n + 1), 250);
+    return () => clearInterval(t);
+  }, [jobs]);
   const [page, setPage] = useState(1);
   const [acc, setAcc] = useState<{ records: number; overall: number | null; fields: { field: string; kept: number; corrected: number; missed: number; total: number; accuracy: number | null }[] } | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -142,32 +193,48 @@ export default function Page() {
     setBusy("upload");
     let auto = 0, check = 0, failed = 0;
     let firstPending: string | null = null;
-    for (const [i, f] of files.entries()) {
-      setProgress(`Reading ${i + 1} of ${files.length}: ${f.name}`);
-      try {
-        const fd = new FormData();
-        fd.append("doc_type", docType);
-        fd.append("file", f);
-        if (oneForm) fd.append("one_form", "1");
-        if (scanned) fd.append("scanned", scanned);
-        const r = await upload<{ import: Rec; imports?: Rec[]; autoCount?: number }>("/imports", fd);
-        // a PDF becomes one paper record per page
-        for (const rec of r.imports ?? [r.import]) {
-          if (rec.status === "Imported") auto++;
-          else { check++; firstPending ??= rec.id; }
+    const patch = (i: number, p: Partial<Job>) => setJobs((js) => js.map((j, k) => (k === i ? { ...j, ...p } : j)));
+    setJobs(files.map((f) => ({ name: f.name, stage: "queued", sent: 0, readFrom: 0 })));
+    let next = 0;
+    const worker = async () => {
+      while (next < files.length) {
+        const i = next++;
+        const f = files[i];
+        patch(i, { stage: "uploading" });
+        try {
+          const fd = new FormData();
+          fd.append("doc_type", docType);
+          fd.append("file", f);
+          if (oneForm) fd.append("one_form", "1");
+          if (scanned) fd.append("scanned", scanned);
+          const t0 = Date.now();
+          let readFrom = 0;
+          const r = await uploadWithProgress<{ import: Rec; imports?: Rec[]; autoCount?: number }>("/imports", fd, (x) => {
+            if (x >= 1 && !readFrom) { readFrom = Date.now(); patch(i, { stage: "reading", sent: 1, readFrom }); }
+            else if (!readFrom) patch(i, { sent: x });
+          });
+          rememberReadMs(Date.now() - (readFrom || t0));
+          patch(i, { stage: "done", sent: 1 });
+          // a PDF becomes one paper record per page
+          for (const rec of r.imports ?? [r.import]) {
+            if (rec.status === "Imported") auto++;
+            else { check++; firstPending ??= rec.id; }
+          }
+        } catch (x) {
+          failed++;
+          patch(i, { stage: "failed" });
+          notify(`${f.name}: ${errText(x)}`, "error", "Upload failed");
         }
-      } catch (x) {
-        failed++;
-        notify(`${f.name}: ${errText(x)}`, "error", "Upload failed");
       }
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(3, files.length) }, worker));
     const list = await load();
     if (auto) setFilter("Imported");
     if (firstPending) { setFilter("Pending"); const m = list.find((x) => x.id === firstPending); if (m) open(m); }
     const parts = [auto && `${auto} registered automatically`, check && `${check} need${check === 1 ? "s" : ""} a quick check`, failed && `${failed} failed`].filter(Boolean).join(", ");
     if (auto || check) notify(`${parts}.${auto ? " Registered records still go through normal verification." : ""}`, "ok", files.length === 1 ? "Scan processed" : `${files.length} scans processed`);
     setBusy("");
-    setProgress("");
+    setTimeout(() => setJobs([]), 900);
     api<typeof acc>("/imports/accuracy").then(setAcc).catch(() => {});
   };
 
@@ -267,7 +334,7 @@ export default function Page() {
           <input type="checkbox" className="h-4 w-4 accent-forest-700" checked={oneForm} onChange={(e) => setOneForm(e.target.checked)} />
           A PDF with several pages is one form
         </label>
-        {progress && <p role="status" className="flex w-full items-center gap-2 text-xs font-semibold text-forest-800"><ButtonSpinner /> {progress}</p>}
+        {jobs.length > 0 && <ReadProgress jobs={jobs} />}
         <p className="text-xs text-ink-3">Choose one or many files (JPG, PNG, WebP or PDF, up to 12 MB each, one form per file). The fields are read from each scan; you check them beside the image and press Approve. Scans are private.</p>
         {rule && (
           <button type="button" onClick={toggleRule} disabled={!can("settings.manage")} aria-pressed={rule.auto} title={can("settings.manage") ? "Switch automatic registration on or off" : "Only an administrator can change this"} className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${rule.auto ? "bg-leaf/15 text-leaf" : "bg-bone text-ink-2"}`}>
