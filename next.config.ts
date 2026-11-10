@@ -36,6 +36,8 @@ const nextConfig: NextConfig = {
       { source: "/directory", destination: "/clubs", permanent: false },
     ];
   },
+  // reading a scan can take longer than the 30 s default before the proxy gives up
+  experimental: { proxyTimeout: 180_000 },
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${API}/api/:path*` }];
   },

@@ -17,6 +17,8 @@ server {
   client_max_body_size 70m;              # trial videos are up to 60 MB
   location / {
     proxy_pass http://127.0.0.1:8090;
+    proxy_read_timeout 180s;             # reading a paper scan can take a while
+    proxy_send_timeout 180s;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
