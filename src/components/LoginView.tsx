@@ -52,7 +52,7 @@ export function LoginView() {
           <div className="mt-6 rounded-xl bg-forest-100 p-4 text-sm">
             Signed in as <b>{me.name}</b>.{" "}
             <Link href={me.staff ? "/console" : "/account"} className="font-bold text-forest-700 underline">Continue</Link> or{" "}
-            <button onClick={logout} className="font-bold text-kenya-red underline">sign out</button>.
+            <button onClick={() => logout()} className="font-bold text-kenya-red underline">sign out</button>.
           </div>
         ) : (
           <form onSubmit={submit} className="mt-6 space-y-4">

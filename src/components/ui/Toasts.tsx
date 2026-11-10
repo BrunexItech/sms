@@ -10,10 +10,12 @@ export interface ToastItem {
   tone: "ok" | "error";
 }
 
-const LIFE = 5500;
+const LIFE_OK = 3200;
+const LIFE_ERR = 6000;
 
 function Toast({ t, onClose }: { t: ToastItem; onClose: (id: number) => void }) {
   const [paused, setPaused] = useState(false);
+  const LIFE = t.tone === "ok" ? LIFE_OK : LIFE_ERR;
   const left = useRef(LIFE);
   const since = useRef(0);
 

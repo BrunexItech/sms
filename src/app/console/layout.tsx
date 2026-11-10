@@ -79,7 +79,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
             <div className="mt-4 flex gap-2">
               <Link href="/" className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white/10 py-2 text-xs font-semibold hover:bg-white/20"><Home size={13} /> Site</Link>
               <button
-                onClick={() => { logout(); router.push("/staff"); }}
+                onClick={() => logout("/staff")}
                 className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-white/10 py-2 text-xs font-semibold hover:bg-white/20"
               >
                 <LogOut size={13} /> Sign out
@@ -92,7 +92,7 @@ export default function ConsoleLayout({ children }: { children: React.ReactNode 
       <div className="min-w-0">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-paper px-6 py-3 lg:hidden">
           <span className="flex items-center gap-2 text-sm font-semibold"><Building2 size={16} /> {user.name} · {role.label}</span>
-          <button onClick={() => { logout(); router.push("/staff"); }} className="text-xs font-semibold text-kenya-red">Sign out</button>
+          <button onClick={() => logout("/staff")} className="text-xs font-semibold text-kenya-red">Sign out</button>
         </div>
         {state.config.demo && (
           <div className="bg-gold-soft/70 px-6 py-2 text-center text-xs text-ink-2">

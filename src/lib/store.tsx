@@ -2,6 +2,7 @@
 
 import { ToastViewport } from "@/components/ui/Toasts";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { api, ApiError } from "./api";
 import { loadAdmin, type AdminData } from "./admin";
 import { can as roleCan, type Permission, type StaffUser } from "./roles";
@@ -127,7 +128,8 @@ interface Store {
   markNotificationsRead: () => Promise<void>;
   startMpesa: (ids: string[], phone: string) => Promise<string>;
   attemptStatus: (id: string) => Promise<{ status: string; message: string; receipt: string | null }>;
-  logout: () => Promise<void>;
+  /** Ends the session behind a full-screen "Signing out" screen, then goes to `to` (nothing flashes in between). */
+  logout: (to?: string) => Promise<void>;
   notify: (text: string, tone?: "ok" | "error", title?: string) => void;
   // applicant
   register: (d: RegisterDraft) => Promise<Application>;
@@ -207,6 +209,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [minDelay, setMinDelay] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [busy, setBusy] = useState<{ kind: "in" | "out"; from: string } | null>(null);
+  const router = useRouter();
+  const path = usePathname();
+  // the "signing in/out" screen shows until the next page has really arrived (or 6 s at most)
+  const authBusy = busy && path === busy.from ? busy.kind : null;
+  const startBusy = useCallback((k: "in" | "out") => {
+    setBusy({ kind: k, from: path });
+    setTimeout(() => setBusy(null), 6000);
+  }, [path]);
 
 
   const apply = useCallback((b: Boot, keepFacilities: boolean) => {
@@ -298,9 +309,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           if (!(e instanceof ApiError && e.status === 428)) notify(errText(e), "error", "Sign-in failed");
           throw e;
         }
-        await refresh();
+        startBusy("in");
+        try {
+          await refresh();
+        } catch (e) {
+          setBusy(null);
+          throw e;
+        }
         const first = r.me.name.trim().split(/\s+/)[0];
-        notify(r.me.staff ? "You are signed in to the staff console." : "Your account is ready.", "ok", `Welcome back, ${first}`);
+        notify(r.me.staff ? "Staff console" : "Your account", "ok", `Welcome back, ${first}`);
         return r.me;
       },
       markNotificationsRead: async () => {
@@ -316,11 +333,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (r.status !== "Pending") await refresh();
         return r;
       },
-      logout: async () => {
-        const first = me?.name.trim().split(/\s+/)[0];
-        await api("/auth/logout", "POST");
-        await refresh();
-        notify(first ? `Goodbye, ${first}. Your session has ended safely.` : "Your session has ended safely.", "ok", "Signed out");
+      logout: async (to) => {
+        startBusy("out");
+        try {
+          await api("/auth/logout", "POST");
+          await refresh();
+        } catch (e) {
+          setBusy(null);
+          throw e;
+        }
+        notify("See you soon.", "ok", "Signed out");
+        if (to) router.replace(to);
+        else setBusy(null);
       },
 
       register: async (d) => {
@@ -429,7 +453,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       cancelVideoRequest: (id) => run(() => api(`/applications/${id}/media-request`, "DELETE"), "Request cancelled."),
       saveFederation: (sportId, f) => run(() => api(`/federations/${sportId}`, "PUT", f), "Federation saved."),
     };
-  }, [state, admin, me, refresh, notify, patchFacility]);
+  }, [state, admin, me, refresh, notify, patchFacility, router, startBusy]);
 
   if (error) {
     return (
@@ -450,6 +474,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   return (
     <StoreContext.Provider value={store}>
       {children}
+      {authBusy && <PageLoader label={authBusy === "in" ? "Signing you in" : "Signing you out"} />}
       <ToastViewport toasts={toasts} onClose={closeToast} />
     </StoreContext.Provider>
   );

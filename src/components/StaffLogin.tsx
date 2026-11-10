@@ -61,7 +61,7 @@ export function StaffLogin() {
           {me?.staff ? (
             <div className="mt-6 rounded-xl bg-forest-100 p-4 text-sm">
               Signed in as <b>{me.name}</b>. <Link href="/console" className="font-bold text-forest-700 underline">Open the console</Link> or{" "}
-              <button onClick={logout} className="font-bold text-kenya-red underline">sign out</button>.
+              <button onClick={() => logout()} className="font-bold text-kenya-red underline">sign out</button>.
             </div>
           ) : (
             <form onSubmit={submit} className="mt-6 space-y-4">

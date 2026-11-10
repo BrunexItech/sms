@@ -120,7 +120,7 @@ export function AccountView() {
           </div>
           <div className="flex flex-wrap gap-2.5">
             <Link href="/register" className="inline-flex items-center gap-2 rounded-xl bg-gold px-5 py-3 text-sm font-bold text-forest-950 shadow-[0_14px_28px_-14px_rgba(245,180,0,0.9)] transition hover:brightness-105"><Plus size={16} /> New registration</Link>
-            <button onClick={async () => { await logout(); router.push("/"); }} className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"><LogOut size={16} /> Sign out</button>
+            <button onClick={() => logout("/")} className="inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-bold text-white backdrop-blur transition hover:bg-white/20"><LogOut size={16} /> Sign out</button>
           </div>
         </div>
       </header>
